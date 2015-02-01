@@ -11,14 +11,13 @@ import curses
 import curses.wrapper
 
 # Model parameters
-size = { 'x': 60, 'y': 60 }
-window = { 'x': 40, 'y': 10 }
+size = { 'x': 250, 'y': 250 }
 init_dens = 0.0
 init_stasis = { 0: frozenset([0,1,2,4,5,6,7,8]), 1: frozenset([2,3]) }
-mut_prob = 0.001
-exchange_prob = 0.008
+mut_prob = 0.0002
+exchange_prob = 0.0001
 vac_decay_prob = 0.001
-unfit_cost = 0.5
+unfit_cost = 0.7
 neighborhood = 1
 
 # Derived parameters
@@ -26,6 +25,7 @@ neighborhood_size = (2 * neighborhood + 1) * (2 * neighborhood + 1)
 
 # Display parameters
 disp_switch = 50
+window = { 'x': 75, 'y': 15 }
 
 def life():
     return { 'state': 1, 'stasis': init_stasis[1],
@@ -54,12 +54,16 @@ def weighted_choice(weights):
         if rnd < 0:
             return i
 
-def display(grid, generation, grid_pad, stat_win, disp_type = 'stasis'):
+def display(grid, generation, grid_pad, stat_win, stdscr,
+            disp_type = 'stasis'):
     genotypes = {}
     parents = {}
     life_lens = []
     vacuum_lens = []
 
+    # Get current terminal dimensions
+    term_y, term_x = stdscr.getmaxyx()
+    
     def grid_push(y, x, s):
         try:
             grid_pad.addch(y, x, s)
@@ -97,7 +101,7 @@ def display(grid, generation, grid_pad, stat_win, disp_type = 'stasis'):
             else:
                 vacuum_lens.append(stasis_len)
                 grid_push(y, x, ' ')
-    grid_pad.noutrefresh(0, 0, 0, 0, window['y'], window['x'])
+    grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
         
     fitness = [ (genotypes[g], list(g)) for g in genotypes ]
     fitness.sort(reverse = True)
@@ -105,6 +109,8 @@ def display(grid, generation, grid_pad, stat_win, disp_type = 'stasis'):
     offspring.sort(reverse = True)
 
     stat_win.erase()
+    stat_win.resize(8, term_x - 1)
+    stat_win.mvwin(term_y - 8, 0)
     stat_win.addstr(0, 0, 'Mode: %s' % disp_type)
     num_life = len(life_lens)
     stat_win.addstr(1, 4, 'Population: %d' % num_life)
@@ -198,10 +204,11 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
             for n in nbr_dict[loc]:
                 live_nbrs_new[n].remove(loc)
 
-def do_sim(max_gen = -1):
+def do_sim(stdscr, max_gen = -1):
     # Setup curses display
+    curses.curs_set(0)
     grid_pad = curses.newpad(size['y'], size['x'])
-    stat_win = curses.newwin(8, 79, 17, 0)
+    stat_win = curses.newwin(0, 0, 0, 0)
     
     grid_0 = {}
     grid_1 = {}
@@ -233,7 +240,8 @@ def do_sim(max_gen = -1):
         if generation % disp_switch == 0:
             disp = random.choice(['stasis', 'parent', 'max', 'min'])
         
-        display(grid_old, generation, grid_pad, stat_win, disp_type = disp)
+        display(grid_old, generation, grid_pad, stat_win, stdscr,
+                disp_type = disp)
         if generation == max_gen:
             break
         
