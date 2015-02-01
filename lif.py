@@ -4,6 +4,7 @@ from __future__ import division
 
 from math import exp
 from string import ascii_letters
+from collections import defaultdict
 import random
 
 # Setup curses for sane output
@@ -14,10 +15,10 @@ import curses.wrapper
 size = { 'x': 300, 'y': 300 }
 init_dens = 0.0
 init_stasis = { 0: frozenset([0,1,2,4,5,6,7,8]), 1: frozenset([2,3]) }
-mut_prob = 0.02
-exchange_prob = 0.01
-vac_decay_prob = 0.01
-unfit_cost = 0.8
+mut_prob = 0.01
+exchange_prob = 0.001
+vac_decay_prob = 0.005
+unfit_cost = 2.5
 neighborhood = 1
 
 # Derived parameters
@@ -56,17 +57,21 @@ def weighted_choice(weights):
 
 def display(grid, generation, grid_pad, stat_win, stdscr,
             disp_type = 'stasis'):
-    genotypes = {}
-    parents = {}
+    genotypes = defaultdict(int)
+    parents = defaultdict(int)
     life_lens = []
     vacuum_lens = []
 
     # Get current terminal dimensions
     term_y, term_x = stdscr.getmaxyx()
-    
-    def grid_push(y, x, s):
+
+    def draw(y, x, s, p = None):
         try:
-            grid_pad.addch(y, x, s)
+            if p == None:
+                grid_pad.addch(y, x, s)
+            else:
+                color = ord(p) % curses.COLORS
+                grid_pad.addch(y, x, s, curses.color_pair(color))
         except curses.error:
             pass
         
@@ -77,30 +82,28 @@ def display(grid, generation, grid_pad, stat_win, stdscr,
             stasis_len = len(stasis)
             if cell['state'] == 1:
                 parent = cell['parent']
-                parents.setdefault(parent, 0)
                 parents[parent] += 1
-                genotypes.setdefault(stasis, 0)
                 genotypes[stasis] += 1
                 life_lens.append(stasis_len)
                 if disp_type == 'stasis':
-                    if stasis_len > 9: grid_push(y, x, '+')
-                    else: grid_push(y, x, str(stasis_len))
+                    if stasis_len > 9: draw(y, x, '+', parent)
+                    else: draw(y, x, str(stasis_len), parent)
                 elif disp_type == 'min':
-                    if len(stasis) == 0: grid_push(y, x, 'x')
+                    if len(stasis) == 0: draw(y, x, 'x', parent)
                     else:
                         stasis_min = min(stasis)
-                        if stasis_min > 9: grid_push(y, x, '+')
-                        else: grid_push(y, x, str(stasis_min))
+                        if stasis_min > 9: draw(y, x, '+', parent)
+                        else: draw(y, x, str(stasis_min), parent)
                 elif disp_type == 'max':
-                    if len(stasis) == 0: grid_push(y, x, 'x')
+                    if len(stasis) == 0: draw(y, x, 'x', parent)
                     else:
                         stasis_max = max(stasis)
-                        if stasis_max > 9: grid_push(y, x, '+')
-                        else: grid_push(y, x, str(stasis_max))
-                elif disp_type == 'parent': grid_push(y, x, cell['parent'])
+                        if stasis_max > 9: draw(y, x, '+', parent)
+                        else: draw(y, x, str(stasis_max), parent)
+                elif disp_type == 'parent': draw(y, x, cell['parent'], parent)
             else:
                 vacuum_lens.append(stasis_len)
-                grid_push(y, x, ' ')
+                draw(y, x, ' ')
     grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
         
     fitness = [ (genotypes[g], list(g)) for g in genotypes ]
@@ -208,6 +211,10 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
 def do_sim(stdscr, max_gen = -1):
     # Setup curses display
     curses.curs_set(0)
+    curses.start_color()
+    curses.use_default_colors()
+    for i in range(0, curses.COLORS):
+        curses.init_pair(i, i, -1)
     grid_pad = curses.newpad(size['y'], size['x'])
     stat_win = curses.newwin(0, 0, 0, 0)
     
