@@ -18,8 +18,8 @@ init_stasis_0_p = 0.9
 init_stasis_1_p = 0.1
 gof_prob = 0.01
 exchange_prob = 0.01
-vac_decay_prob = 0.1
-unfit_cost = 2.8
+vac_decay_prob = 0.05
+unfit_cost = 3.0
 
 # Display parameters
 disp_switch = 50
@@ -154,7 +154,12 @@ def exchange(old, live_nbrs, stasis, parent):
     if len(live_nbrs) == 0:
         exchanger_stasis = stasis
     else:
-        exchanger_stasis = old[random.choice(live_nbrs)]['stasis']
+        conspecific_nbrs = [live_nbr for live_nbr in live_nbrs
+                            if old[live_nbr]['parent'] == parent]
+        if len(conspecific_nbrs) == 0:
+            exchanger_stasis = old[random.choice(live_nbrs)]['stasis']
+        else:
+            exchanger_stasis = old[random.choice(conspecific_nbrs)]['stasis']
     
     new_stasis = set()
     new_stasis.update(stasis.intersection(exchanger_stasis))
