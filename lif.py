@@ -11,13 +11,13 @@ import curses
 import curses.wrapper
 
 # Model parameters
-size = { 'x': 250, 'y': 250 }
+size = { 'x': 300, 'y': 300 }
 init_dens = 0.0
 init_stasis = { 0: frozenset([0,1,2,4,5,6,7,8]), 1: frozenset([2,3]) }
-mut_prob = 0.0002
-exchange_prob = 0.0001
-vac_decay_prob = 0.001
-unfit_cost = 0.7
+mut_prob = 0.02
+exchange_prob = 0.01
+vac_decay_prob = 0.01
+unfit_cost = 0.8
 neighborhood = 1
 
 # Derived parameters
@@ -121,8 +121,8 @@ def display(grid, generation, grid_pad, stat_win, stdscr,
     if num_vacuum > 0:
         mean_vacuum = sum(vacuum_lens) / num_vacuum
         stat_win.addstr(3, 4, 'Mean vacuum: %.2f' % mean_vacuum)
-    stat_win.addstr(5, 0, str(fitness[0:5]))
-    stat_win.addstr(6, 0, str(offspring[0:5]))
+    stat_win.addstr(5, 0, str(fitness)[0:term_x-1])
+    stat_win.addstr(6, 0, str(offspring)[0:term_x-1])
     stat_win.addstr(7, 0, 'Generation: %d' % generation)
     stat_win.noutrefresh()
 
@@ -148,9 +148,10 @@ def exchange(old, live_nbrs, stasis, parent):
         exchanger_stasis = stasis
     else:
         exchanger_stasis = old[random.choice(live_nbrs)]['stasis']
-    combined = list(stasis) + list(exchanger_stasis)
+    
     new_stasis = set()
-    for s in combined:
+    new_stasis.update(stasis.intersection(exchanger_stasis))
+    for s in stasis.symmetric_difference(exchanger_stasis):
         if random.random() < 0.5:
             new_stasis.add(s)
     return child(frozenset(new_stasis), parent)
