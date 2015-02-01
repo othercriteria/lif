@@ -14,28 +14,32 @@ import curses.wrapper
 # Model parameters
 size = { 'x': 300, 'y': 300 }
 init_dens = 0.0
-init_stasis = { 0: frozenset([0,1,2,4,5,6,7,8]), 1: frozenset([2,3]) }
-mut_prob = 0.01
-exchange_prob = 0.001
-vac_decay_prob = 0.005
-unfit_cost = 2.5
-neighborhood = 1
-
-# Derived parameters
-neighborhood_size = (2 * neighborhood + 1) * (2 * neighborhood + 1)
+init_stasis_0_p = 0.9
+init_stasis_1_p = 0.1
+gof_prob = 0.01
+exchange_prob = 0.01
+vac_decay_prob = 0.1
+unfit_cost = 2.8
 
 # Display parameters
 disp_switch = 50
-window = { 'x': 75, 'y': 15 }
+
+def random_stasis(p):
+    stasis = set()
+    for s in range(9):
+        if random.random() < p:
+            stasis.add(s)
+    return frozenset(stasis)
 
 def life():
-    return { 'state': 1, 'stasis': init_stasis[1],
+    return { 'state': 1, 'stasis': random_stasis(init_stasis_1_p),
              'parent': random.choice(ascii_letters) }
 
 def child(stasis, parent):
     return { 'state': 1, 'stasis': stasis, 'parent': parent }
 
-vacuum = { 'state': 0, 'stasis': init_stasis[0] }
+def vacuum():
+    return { 'state': 0, 'stasis': random_stasis(init_stasis_0_p) }
 
 def decayed(stasis):
     return { 'state': 0, 'stasis': stasis }
@@ -43,8 +47,8 @@ def decayed(stasis):
 def neighbors(loc):
     x, y = loc
     return [(nx % size['x'], ny % size['y'])
-            for nx in range(x - neighborhood, x + neighborhood + 1)
-            for ny in range(y - neighborhood, y + neighborhood + 1)
+            for nx in range(x - 1, x + 2)
+            for ny in range(y - 1, y + 2)
             if not (nx == x and ny == y)]
 
 # http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python
@@ -137,8 +141,8 @@ def settlement(old, live_nbrs):
     settler_stasis = old[settler]['stasis']
     parent = old[settler]['parent']
     diff = set()
-    for s in range(neighborhood_size):
-        if random.random() < mut_prob:
+    for s in range(9):
+        if random.random() < gof_prob:
             diff.add(s)
     return child(settler_stasis.symmetric_difference(diff), parent)
 
@@ -191,7 +195,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
         return 'birth'
 
     # Overcrowding
-    grid_new[loc] = vacuum
+    grid_new[loc] = vacuum()
     return 'death'
 
 def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
@@ -234,7 +238,7 @@ def do_sim(stdscr, max_gen = -1):
                 for n in nbrs:
                     live_nbrs_0.setdefault(n, []).append(loc)
             else:
-                grid_0[loc] = vacuum
+                grid_0[loc] = vacuum()
 
     generation = 0
     while True:
