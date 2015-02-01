@@ -1,16 +1,23 @@
 #!/usr/bin/env python
 
+from __future__ import division
+
 from math import exp
 from string import ascii_letters
 import random
 
+# Setup curses for sane output
+import curses
+import curses.wrapper
+
 # Model parameters
-size = { 'x': 65, 'y': 230 }
+size = { 'x': 60, 'y': 60 }
+window = { 'x': 40, 'y': 10 }
 init_dens = 0.0
 init_stasis = { 0: frozenset([0,1,2,4,5,6,7,8]), 1: frozenset([2,3]) }
-mut_prob = 0.0001
-exchange_prob = 0.0008
-vac_decay_prob = 0.0001
+mut_prob = 0.001
+exchange_prob = 0.008
+vac_decay_prob = 0.001
 unfit_cost = 0.5
 neighborhood = 1
 
@@ -47,14 +54,19 @@ def weighted_choice(weights):
         if rnd < 0:
             return i
 
-def display(grid, generation, show_grid = True, disp_type = 'stasis'):
-    out = ''
+def display(grid, generation, grid_pad, stat_win, disp_type = 'stasis'):
     genotypes = {}
     parents = {}
     life_lens = []
     vacuum_lens = []
+
+    def grid_push(y, x, s):
+        try:
+            grid_pad.addch(y, x, s)
+        except curses.error:
+            pass
+        
     for x in range(size['x']):
-        row = []
         for y in range(size['y']):
             cell = grid[(x,y)]
             stasis = cell['stasis']
@@ -66,50 +78,49 @@ def display(grid, generation, show_grid = True, disp_type = 'stasis'):
                 genotypes.setdefault(stasis, 0)
                 genotypes[stasis] += 1
                 life_lens.append(stasis_len)
-                if show_grid:
-                    if disp_type == 'stasis':
-                        if stasis_len > 9: row += '+'
-                        else: row += str(stasis_len)
-                    elif disp_type == 'min':
-                        if len(stasis) == 0:
-                            row += 'x'
-                        else:
-                            stasis_min = min(stasis)
-                            if stasis_min > 9: row += '+'
-                            else: row += str(stasis_min)
-                    elif disp_type == 'max':
-                        if len(stasis) == 0:
-                            row += 'x'
-                        else:
-                            stasis_max = max(stasis)
-                            if stasis_max > 9: row += '+'
-                            else: row += str(stasis_max)
-                    elif disp_type == 'parent': row += cell['parent']
+                if disp_type == 'stasis':
+                    if stasis_len > 9: grid_push(y, x, '+')
+                    else: grid_push(y, x, str(stasis_len))
+                elif disp_type == 'min':
+                    if len(stasis) == 0: grid_push(y, x, 'x')
+                    else:
+                        stasis_min = min(stasis)
+                        if stasis_min > 9: grid_push(y, x, '+')
+                        else: grid_push(y, x, str(stasis_min))
+                elif disp_type == 'max':
+                    if len(stasis) == 0: grid_push(y, x, 'x')
+                    else:
+                        stasis_max = max(stasis)
+                        if stasis_max > 9: grid_push(y, x, '+')
+                        else: grid_push(y, x, str(stasis_max))
+                elif disp_type == 'parent': grid_push(y, x, cell['parent'])
             else:
                 vacuum_lens.append(stasis_len)
-                if show_grid: row += ' '
-        if show_grid: out += (''.join(row) + '\n')
+                grid_push(y, x, ' ')
+    grid_pad.noutrefresh(0, 0, 0, 0, window['y'], window['x'])
         
     fitness = [ (genotypes[g], list(g)) for g in genotypes ]
     fitness.sort(reverse = True)
     offspring = [ (parents[p], p) for p in parents ]
     offspring.sort(reverse = True)
 
-    out += 'Mode: %s' % disp_type
+    stat_win.erase()
+    stat_win.addstr(0, 0, 'Mode: %s' % disp_type)
     num_life = len(life_lens)
-    out += '\tPopulation: %d' % num_life
+    stat_win.addstr(1, 4, 'Population: %d' % num_life)
     if num_life > 0:
-        out += '\tMean life: %.2f' % (1.0 * sum(life_lens) / num_life)
+        mean_life = sum(life_lens) / num_life
+        stat_win.addstr(2, 4, 'Mean life: %.2f' % mean_life)
     num_vacuum = len(vacuum_lens)
     if num_vacuum > 0:
-        out += '\tMean vacuum: %.2f' % (1.0 * sum(vacuum_lens) / num_vacuum)
-    out += '\n'
+        mean_vacuum = sum(vacuum_lens) / num_vacuum
+        stat_win.addstr(3, 4, 'Mean vacuum: %.2f' % mean_vacuum)
+    stat_win.addstr(5, 0, str(fitness[0:5]))
+    stat_win.addstr(6, 0, str(offspring[0:5]))
+    stat_win.addstr(7, 0, 'Generation: %d' % generation)
+    stat_win.noutrefresh()
 
-    out += str(fitness[0:5]) + '\n'
-    out += str(offspring[0:5]) + '\n'
-    out += 'Generation: %d\n' % generation
-
-    print out
+    curses.doupdate()
 
 def settlement(old, live_nbrs):
     probs = [exp(-unfit_cost * len(old[n]['stasis'])) for n in live_nbrs]
@@ -187,7 +198,11 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
             for n in nbr_dict[loc]:
                 live_nbrs_new[n].remove(loc)
 
-def do_sim(max_gen):
+def do_sim(max_gen = -1):
+    # Setup curses display
+    grid_pad = curses.newpad(size['y'], size['x'])
+    stat_win = curses.newwin(8, 79, 17, 0)
+    
     grid_0 = {}
     grid_1 = {}
     live_nbrs_0 = {}
@@ -218,11 +233,12 @@ def do_sim(max_gen):
         if generation % disp_switch == 0:
             disp = random.choice(['stasis', 'parent', 'max', 'min'])
         
-        display(grid_old, generation, show_grid = True, disp_type = disp)
+        display(grid_old, generation, grid_pad, stat_win, disp_type = disp)
         if generation == max_gen:
             break
         
         step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict)
         generation += 1
 
-do_sim(-1)
+curses.wrapper(do_sim)
+
