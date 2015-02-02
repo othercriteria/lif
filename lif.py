@@ -56,7 +56,7 @@ def weighted_choice(weights):
         if rnd < 0:
             return i
 
-def display(grid, generation, grid_pad, stat_win, stdscr,
+def display(grid, events, generation, grid_pad, stat_win, stdscr,
             disp_type = 'stasis'):
     genotypes = defaultdict(int)
     parents = defaultdict(int)
@@ -66,13 +66,22 @@ def display(grid, generation, grid_pad, stat_win, stdscr,
     # Get current terminal dimensions
     term_y, term_x = stdscr.getmaxyx()
 
-    def draw(y, x, s, p = None):
+    def draw(x, y, s, p = None):
+        loc = (x,y)
+        if not loc in events:
+            emphasis = 0
+        elif events[loc] == 'settlement':
+            emphasis = curses.A_BOLD
+        elif events[loc] == 'exchange':
+            emphasis = curses.A_REVERSE
+        
         try:
             if p == None:
                 grid_pad.addch(y, x, s)
             else:
-                color = ord(p) % curses.COLORS
-                grid_pad.addch(y, x, s, curses.color_pair(color))
+                attr = curses.color_pair(ord(p) % curses.COLORS)
+                attr |= emphasis
+                grid_pad.addch(y, x, s, attr)
         except curses.error:
             pass
         
@@ -87,24 +96,24 @@ def display(grid, generation, grid_pad, stat_win, stdscr,
                 genotypes[stasis] += 1
                 life_lens.append(stasis_len)
                 if disp_type == 'stasis':
-                    if stasis_len > 9: draw(y, x, '+', parent)
-                    else: draw(y, x, str(stasis_len), parent)
+                    if stasis_len > 9: draw(x, y, '+', parent)
+                    else: draw(x, y, str(stasis_len), parent)
                 elif disp_type == 'min':
-                    if len(stasis) == 0: draw(y, x, 'x', parent)
+                    if len(stasis) == 0: draw(x, y, 'x', parent)
                     else:
                         stasis_min = min(stasis)
-                        if stasis_min > 9: draw(y, x, '+', parent)
-                        else: draw(y, x, str(stasis_min), parent)
+                        if stasis_min > 9: draw(x, y, '+', parent)
+                        else: draw(x, y, str(stasis_min), parent)
                 elif disp_type == 'max':
-                    if len(stasis) == 0: draw(y, x, 'x', parent)
+                    if len(stasis) == 0: draw(x, y, 'x', parent)
                     else:
                         stasis_max = max(stasis)
-                        if stasis_max > 9: draw(y, x, '+', parent)
-                        else: draw(y, x, str(stasis_max), parent)
-                elif disp_type == 'parent': draw(y, x, cell['parent'], parent)
+                        if stasis_max > 9: draw(x, y, '+', parent)
+                        else: draw(x, y, str(stasis_max), parent)
+                elif disp_type == 'parent': draw(x, y, cell['parent'], parent)
             else:
                 vacuum_lens.append(stasis_len)
-                draw(y, x, ' ')
+                draw(x, y, ' ')
     grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
         
     fitness = [ (genotypes[g], list(g)) for g in genotypes ]
@@ -183,6 +192,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
                 # Exchange
                 grid_new[loc] = exchange(grid_old, live_nbrs_old,
                                          stasis, cell['parent'])
+                return 'exchange'
             else:
                 grid_new[loc] = cell
         return 'none'
@@ -191,10 +201,11 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
         if num_live_nbrs == 0:
             # De novo birth
             grid_new[loc] = life()
+            return 'birth'
         else:
             # Settlement
             grid_new[loc] = settlement(grid_old, live_nbrs_old)
-        return 'birth'
+            return 'settlement'
 
     # Overcrowding
     grid_new[loc] = vacuum()
@@ -204,15 +215,24 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
     for loc in live_nbrs_old:
         live_nbrs_new[loc] = live_nbrs_old[loc][:]
 
+    events = {}
     for loc in grid_old:
         change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc)
         if change == 'none': continue
-        if change == 'birth':
-            for n in nbr_dict[loc]:
-                live_nbrs_new[n].append(loc)
         elif change == 'death':
             for n in nbr_dict[loc]:
                 live_nbrs_new[n].remove(loc)
+        elif change == 'settlement':
+            for n in nbr_dict[loc]:
+                live_nbrs_new[n].append(loc)
+            events[loc] = 'settlement'
+        elif change == 'exchange':
+            events[loc] = 'exchange'
+        elif change == 'birth':
+            for n in nbr_dict[loc]:
+                live_nbrs_new[n].append(loc)
+
+    return events
 
 def do_sim(stdscr, grid_pad, stat_win):
     grid_0 = {}
@@ -235,6 +255,7 @@ def do_sim(stdscr, grid_pad, stat_win):
 
     generation = 0
     mode = 0
+    events = {}
     while True:
         # Handle use input
         c = stdscr.getch()
@@ -253,9 +274,10 @@ def do_sim(stdscr, grid_pad, stat_win):
             grid_new, live_nbrs_new = grid_0, live_nbrs_0
 
         disp = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
-        display(grid_old, generation, grid_pad, stat_win, stdscr, disp)
+        display(grid_old, events, generation, grid_pad, stat_win, stdscr, disp)
         
-        step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict)
+        events = step(grid_old, grid_new,
+                      live_nbrs_old, live_nbrs_new, nbr_dict)
         generation += 1
 
 def main(stdscr):
