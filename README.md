@@ -23,7 +23,7 @@ flip state. For Life, the stasis set for all living cells is {2,3} and that
 for all dead cells is {0,1,2,4,5,6,7,8}. In Lif, these sets can vary
 individually for every cell. Biologically-inspired rules describe how
 the stasis set of a newly-settled living cell is derived from its
-possible parents, or arises *de novo$.
+possible parents, or arises *de novo*.
 
 ## Requirements
 
