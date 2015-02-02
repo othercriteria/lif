@@ -12,14 +12,14 @@ import curses
 import curses.wrapper
 
 # Model parameters
-size = { 'x': 75, 'y': 16 }
+size = { 'x': 78, 'y': 17 }
 init_dens = 0.0
 init_stasis_0_p = 0.9
 init_stasis_1_p = 0.1
 gof_prob = 0.01
 exchange_prob = 0.01
 vac_decay_prob = 0.05
-unfit_cost = 3.5
+unfit_cost = 5.0
 
 def random_stasis(p):
     stasis = set()
@@ -240,9 +240,9 @@ def do_sim(stdscr, grid_pad, stat_win):
         c = stdscr.getch()
         if c == ord('q'):
             return 'quit'
-        elif c == ord('m'):
-            mode = (mode + 1) % 4
         elif c == ord(' '):
+            mode = (mode + 1) % 4
+        elif c == ord('r'):
             return 'restart'
         
         if generation % 2 == 0:
