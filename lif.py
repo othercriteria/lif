@@ -12,17 +12,14 @@ import curses
 import curses.wrapper
 
 # Model parameters
-size = { 'x': 300, 'y': 300 }
+size = { 'x': 75, 'y': 16 }
 init_dens = 0.0
 init_stasis_0_p = 0.9
 init_stasis_1_p = 0.1
 gof_prob = 0.01
 exchange_prob = 0.01
 vac_decay_prob = 0.05
-unfit_cost = 3.0
-
-# Display parameters
-disp_switch = 50
+unfit_cost = 3.5
 
 def random_stasis(p):
     stasis = set()
@@ -217,16 +214,7 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
             for n in nbr_dict[loc]:
                 live_nbrs_new[n].remove(loc)
 
-def do_sim(stdscr, max_gen = -1):
-    # Setup curses display
-    curses.curs_set(0)
-    curses.start_color()
-    curses.use_default_colors()
-    for i in range(0, curses.COLORS):
-        curses.init_pair(i, i, -1)
-    grid_pad = curses.newpad(size['y'], size['x'])
-    stat_win = curses.newwin(0, 0, 0, 0)
-    
+def do_sim(stdscr, grid_pad, stat_win):
     grid_0 = {}
     grid_1 = {}
     live_nbrs_0 = {}
@@ -246,7 +234,17 @@ def do_sim(stdscr, max_gen = -1):
                 grid_0[loc] = vacuum()
 
     generation = 0
+    mode = 0
     while True:
+        # Handle use input
+        c = stdscr.getch()
+        if c == ord('q'):
+            return 'quit'
+        elif c == ord('m'):
+            mode = (mode + 1) % 4
+        elif c == ord(' '):
+            return 'restart'
+        
         if generation % 2 == 0:
             grid_old, live_nbrs_old = grid_0, live_nbrs_0
             grid_new, live_nbrs_new = grid_1, live_nbrs_1
@@ -254,16 +252,31 @@ def do_sim(stdscr, max_gen = -1):
             grid_old, live_nbrs_old = grid_1, live_nbrs_1
             grid_new, live_nbrs_new = grid_0, live_nbrs_0
 
-        if generation % disp_switch == 0:
-            disp = random.choice(['stasis', 'parent', 'max', 'min'])
-        
-        display(grid_old, generation, grid_pad, stat_win, stdscr,
-                disp_type = disp)
-        if generation == max_gen:
-            break
+        disp = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
+        display(grid_old, generation, grid_pad, stat_win, stdscr, disp)
         
         step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict)
         generation += 1
 
-curses.wrapper(do_sim)
+def main(stdscr):
+    # Setup curses display
+    stdscr.nodelay(1)
+    curses.curs_set(0)
+    curses.start_color()
+    curses.use_default_colors()
+    for i in range(0, curses.COLORS):
+        curses.init_pair(i, i, -1)
+    grid_pad = curses.newpad(size['y'], size['x'])
+    stat_win = curses.newwin(0, 0, 0, 0)
+
+    while True:
+        grid_pad.erase()
+        stat_win.erase()
+        
+        r = do_sim(stdscr, grid_pad, stat_win)
+
+        if r == 'quit':
+            break
+        
+curses.wrapper(main)
 
