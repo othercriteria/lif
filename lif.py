@@ -12,14 +12,12 @@ import curses
 import curses.wrapper
 
 # Model parameters
-size = { 'x': 78, 'y': 17 }
-init_dens = 0.0
-init_stasis_0_p = 0.9
-init_stasis_1_p = 0.1
-gof_prob = 0.01
-exchange_prob = 0.01
-vac_decay_prob = 0.05
-unfit_cost = 5.0
+params = { 'size': { 'x': 78, 'y': 17 },
+           'init_stasis_p': 0.1,
+           'gof_prob': 0.001,
+           'exchange_prob': 0.01,
+           'goh_prob': 0.01,
+           'fit_cost': 5.0 }
 
 def random_stasis(p):
     stasis = set()
@@ -28,22 +26,22 @@ def random_stasis(p):
             stasis.add(s)
     return frozenset(stasis)
 
-def life():
-    return { 'state': 1, 'stasis': random_stasis(init_stasis_1_p),
+def alive():
+    return { 'state': 1, 'stasis': random_stasis(params['init_stasis_p']),
              'parent': random.choice(ascii_letters) }
 
 def child(stasis, parent):
     return { 'state': 1, 'stasis': stasis, 'parent': parent }
 
-def vacuum():
-    return { 'state': 0, 'stasis': random_stasis(init_stasis_0_p) }
+def empty():
+    return { 'state': 0, 'stasis': frozenset(range(8)) }
 
 def decayed(stasis):
     return { 'state': 0, 'stasis': stasis }
 
 def neighbors(loc):
     x, y = loc
-    return [(nx % size['x'], ny % size['y'])
+    return [(nx % params['size']['x'], ny % params['size']['y'])
             for nx in range(x - 1, x + 2)
             for ny in range(y - 1, y + 2)
             if not (nx == x and ny == y)]
@@ -60,8 +58,8 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             disp_type = 'stasis'):
     genotypes = defaultdict(int)
     parents = defaultdict(int)
-    life_lens = []
-    vacuum_lens = []
+    alive_lens = []
+    empty_lens = []
 
     # Get current terminal dimensions
     term_y, term_x = stdscr.getmaxyx()
@@ -85,8 +83,8 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
         except curses.error:
             pass
         
-    for x in range(size['x']):
-        for y in range(size['y']):
+    for x in range(params['size']['x']):
+        for y in range(params['size']['y']):
             cell = grid[(x,y)]
             stasis = cell['stasis']
             stasis_len = len(stasis)
@@ -94,7 +92,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                 parent = cell['parent']
                 parents[parent] += 1
                 genotypes[stasis] += 1
-                life_lens.append(stasis_len)
+                alive_lens.append(stasis_len)
                 if disp_type == 'stasis':
                     if stasis_len > 9: draw(x, y, '+', parent)
                     else: draw(x, y, str(stasis_len), parent)
@@ -112,7 +110,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                         else: draw(x, y, str(stasis_max), parent)
                 elif disp_type == 'parent': draw(x, y, cell['parent'], parent)
             else:
-                vacuum_lens.append(stasis_len)
+                empty_lens.append(stasis_len)
                 draw(x, y, ' ')
     grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
         
@@ -124,16 +122,18 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
     stat_win.mvwin(term_y - 8, 0)
-    stat_win.addstr(0, 0, 'Mode: %s' % disp_type)
-    num_life = len(life_lens)
-    stat_win.addstr(1, 4, 'Population: %d' % num_life)
-    if num_life > 0:
-        mean_life = sum(life_lens) / num_life
-        stat_win.addstr(2, 4, 'Mean life: %.2f' % mean_life)
-    num_vacuum = len(vacuum_lens)
-    if num_vacuum > 0:
-        mean_vacuum = sum(vacuum_lens) / num_vacuum
-        stat_win.addstr(3, 4, 'Mean vacuum: %.2f' % mean_vacuum)
+    mode_line = 'Display mode: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
+      (disp_type, params['exchange_prob'], params['fit_cost'])
+    stat_win.addstr(0, 0, mode_line)
+    num_alive = len(alive_lens)
+    stat_win.addstr(1, 0, 'Population: %d' % num_alive)
+    if num_alive > 0:
+        mean_alive = sum(alive_lens) / num_alive
+        stat_win.addstr(2, 0, 'Mean alive complexity: %.2f' % mean_alive)
+    num_empty = len(empty_lens)
+    if num_empty > 0:
+        mean_empty = sum(empty_lens) / num_empty
+        stat_win.addstr(3, 0, 'Mean empty habitability: %.2f' % mean_empty)
     stat_win.addstr(5, 0, str(fitness)[0:term_x-1])
     stat_win.addstr(6, 0, str(offspring)[0:term_x-1])
     stat_win.addstr(7, 0, 'Generation: %d' % generation)
@@ -142,13 +142,14 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     curses.doupdate()
 
 def settlement(old, live_nbrs):
-    probs = [exp(-unfit_cost * len(old[n]['stasis'])) for n in live_nbrs]
+    probs = [exp(-params['fit_cost'] * len(old[n]['stasis']))
+             for n in live_nbrs]
     settler = live_nbrs[weighted_choice(probs)]
     settler_stasis = old[settler]['stasis']
     parent = old[settler]['parent']
     diff = set()
     for s in range(9):
-        if random.random() < gof_prob:
+        if random.random() < params['gof_prob']:
             diff.add(s)
     return child(settler_stasis.symmetric_difference(diff), parent)
 
@@ -182,13 +183,13 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
     
     if num_live_nbrs in stasis:
         if state == 0:
-            if random.random() < vac_decay_prob and len(stasis) > 1:
-                # Vacuum decay
+            if random.random() < params['goh_prob'] and len(stasis) > 1:
+                # Empty decay
                 grid_new[loc] = decay(stasis)
             else:
                 grid_new[loc] = cell
         else:
-            if random.random() < exchange_prob:
+            if random.random() < params['exchange_prob']:
                 # Exchange
                 grid_new[loc] = exchange(grid_old, live_nbrs_old,
                                          stasis, cell['parent'])
@@ -200,7 +201,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
     if state == 0:
         if num_live_nbrs == 0:
             # De novo birth
-            grid_new[loc] = life()
+            grid_new[loc] = alive()
             return 'birth'
         else:
             # Settlement
@@ -208,7 +209,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
             return 'settlement'
 
     # Overcrowding
-    grid_new[loc] = vacuum()
+    grid_new[loc] = empty()
     return 'death'
 
 def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
@@ -240,18 +241,18 @@ def do_sim(stdscr, grid_pad, stat_win):
     live_nbrs_0 = {}
     live_nbrs_1 = {}
     nbr_dict = {}
-    for x in range(size['x']):
-        for y in range(size['y']):
+    for x in range(params['size']['x']):
+        for y in range(params['size']['y']):
             loc = (x,y)
             nbrs = neighbors(loc)
             nbr_dict[loc] = nbrs
             live_nbrs_0.setdefault(loc, [])
-            if random.random() < init_dens:
-                grid_0[loc] = life()
+            if random.random() < 0:
+                grid_0[loc] = alive()
                 for n in nbrs:
                     live_nbrs_0.setdefault(n, []).append(loc)
             else:
-                grid_0[loc] = vacuum()
+                grid_0[loc] = empty()
 
     generation = 0
     mode = 0
@@ -265,6 +266,14 @@ def do_sim(stdscr, grid_pad, stat_win):
             mode = (mode + 1) % 4
         elif c == ord('r'):
             return 'restart'
+        elif c == curses.KEY_DOWN:
+            params['fit_cost'] *= 0.9
+        elif c == curses.KEY_UP:
+            params['fit_cost'] /= 0.9
+        elif c == curses.KEY_LEFT:
+            params['exchange_prob'] *= 0.9
+        elif c == curses.KEY_RIGHT:
+            params['exchange_prob'] /= 0.9
         
         if generation % 2 == 0:
             grid_old, live_nbrs_old = grid_0, live_nbrs_0
@@ -288,7 +297,7 @@ def main(stdscr):
     curses.use_default_colors()
     for i in range(0, curses.COLORS):
         curses.init_pair(i, i, -1)
-    grid_pad = curses.newpad(size['y'], size['x'])
+    grid_pad = curses.newpad(params['size']['y'], params['size']['x'])
     stat_win = curses.newwin(0, 0, 0, 0)
 
     while True:
