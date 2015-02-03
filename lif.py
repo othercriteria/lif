@@ -14,9 +14,9 @@ import curses.wrapper
 # Model parameters
 params = { 'size': { 'x': 78, 'y': 17 },
            'init_stasis_p': 0.1,
-           'gof_prob': 0.001,
+           'mut_prob': 0.001,
            'exchange_prob': 0.01,
-           'goh_prob': 0.01,
+           'hab_prob': 1.0,
            'fit_cost': 5.0 }
 
 def random_stasis(p):
@@ -35,9 +35,6 @@ def child(stasis, parent):
 
 def empty():
     return { 'state': 0, 'stasis': frozenset(range(8)) }
-
-def decayed(stasis):
-    return { 'state': 0, 'stasis': stasis }
 
 def neighbors(loc):
     x, y = loc
@@ -94,20 +91,17 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                 genotypes[stasis] += 1
                 alive_lens.append(stasis_len)
                 if disp_type == 'stasis':
-                    if stasis_len > 9: draw(x, y, '+', parent)
-                    else: draw(x, y, str(stasis_len), parent)
+                    draw(x, y, str(stasis_len), parent)
                 elif disp_type == 'min':
                     if len(stasis) == 0: draw(x, y, 'x', parent)
                     else:
                         stasis_min = min(stasis)
-                        if stasis_min > 9: draw(x, y, '+', parent)
-                        else: draw(x, y, str(stasis_min), parent)
+                        draw(x, y, str(stasis_min), parent)
                 elif disp_type == 'max':
                     if len(stasis) == 0: draw(x, y, 'x', parent)
                     else:
                         stasis_max = max(stasis)
-                        if stasis_max > 9: draw(x, y, '+', parent)
-                        else: draw(x, y, str(stasis_max), parent)
+                        draw(x, y, str(stasis_max), parent)
                 elif disp_type == 'parent': draw(x, y, cell['parent'], parent)
             else:
                 empty_lens.append(stasis_len)
@@ -149,13 +143,16 @@ def settlement(old, live_nbrs):
     parent = old[settler]['parent']
     diff = set()
     for s in range(9):
-        if random.random() < params['gof_prob']:
+        if random.random() < params['mut_prob']:
             diff.add(s)
     return child(settler_stasis.symmetric_difference(diff), parent)
 
-def decay(stasis):
-    lost = set([random.choice(list(stasis))])
-    return decayed(stasis.difference(lost))
+def gain_habitability(stasis):
+    if len(stasis) > 0:
+        lost = set([random.choice(list(stasis))])
+        return { 'state': 0, 'stasis': stasis.difference(lost) }
+    else:
+        return { 'state': 0, 'stasis': stasis }
 
 def exchange(old, live_nbrs, stasis, parent):
     if len(live_nbrs) == 0:
@@ -180,35 +177,35 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
     state = cell['state']
     stasis = cell['stasis']
     num_live_nbrs = len(live_nbrs_old)
-    
+
+    # Stasis
     if num_live_nbrs in stasis:
         if state == 0:
-            if random.random() < params['goh_prob'] and len(stasis) > 1:
-                # Empty decay
-                grid_new[loc] = decay(stasis)
+            if random.random() < params['hab_prob']:
+                grid_new[loc] = gain_habitability(stasis)
+                return 'habitability'
             else:
                 grid_new[loc] = cell
+                return 'none'
         else:
             if random.random() < params['exchange_prob']:
-                # Exchange
                 grid_new[loc] = exchange(grid_old, live_nbrs_old,
                                          stasis, cell['parent'])
                 return 'exchange'
             else:
                 grid_new[loc] = cell
-        return 'none'
+                return 'none'
 
+    # Gain
     if state == 0:
         if num_live_nbrs == 0:
-            # De novo birth
             grid_new[loc] = alive()
             return 'birth'
         else:
-            # Settlement
             grid_new[loc] = settlement(grid_old, live_nbrs_old)
             return 'settlement'
 
-    # Overcrowding
+    # Loss
     grid_new[loc] = empty()
     return 'death'
 
@@ -219,7 +216,7 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
     events = {}
     for loc in grid_old:
         change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc)
-        if change == 'none': continue
+        if change == 'none' or change == 'habitability': continue
         elif change == 'death':
             for n in nbr_dict[loc]:
                 live_nbrs_new[n].remove(loc)
