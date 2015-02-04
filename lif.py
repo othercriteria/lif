@@ -117,8 +117,9 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
     stat_win.mvwin(term_y - 8, 0)
-    mode_line = 'Display mode: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
-      (disp_type, params['exchange_prob'], params['fit_cost'])
+    rules = { False: 'Lif', True: 'Life' }[params['standard']]
+    mode_line = '%s\tDisp: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
+      (rules, disp_type, params['exchange_prob'], params['fit_cost'])
     stat_win.addstr(0, 0, mode_line)
     num_alive = len(alive_lens)
     stat_win.addstr(1, 0, 'Population: %d' % num_alive)
