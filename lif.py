@@ -13,6 +13,7 @@ import curses.wrapper
 
 # Model parameters
 params = { 'size': { 'x': 78, 'y': 17 },
+           'standard': False,
            'init_stasis_p': 0.1,
            'mut_prob': 0.001,
            'exchange_prob': 0.01,
@@ -174,6 +175,26 @@ def exchange(grid, live_nbrs, stasis, parent):
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return child(frozenset(new_stasis_mut), parent)
 
+def step_cell_s(grid_old, grid_new, live_nbrs_old, loc):
+    cell = grid_old[loc]
+    state = cell['state']
+    num_live_nbrs = len(live_nbrs_old)
+
+    if state == 0:
+        if num_live_nbrs == 3:
+            grid_new[loc] = alive()
+            return 'birth'
+        else:
+            grid_new[loc] = cell
+            return 'none'
+    else:
+        if num_live_nbrs == 2 or num_live_nbrs == 3:
+            grid_new[loc] = cell
+            return 'none'
+        else:
+            grid_new[loc] = empty()
+            return 'death'
+
 def step_cell(grid_old, grid_new, live_nbrs_old, loc):
     cell = grid_old[loc]
     state = cell['state']
@@ -217,7 +238,10 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
 
     events = {}
     for loc in grid_old:
-        change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc)
+        if not params['standard']:
+            change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc)
+        else:
+            change = step_cell_s(grid_old, grid_new, live_nbrs_old[loc], loc)
         if change == 'none' or change == 'habitability': continue
         elif change == 'death':
             for n in nbr_dict[loc]:
@@ -265,6 +289,8 @@ def do_sim(stdscr, grid_pad, stat_win):
             mode = (mode + 1) % 4
         elif c == ord('r'):
             return 'restart'
+        elif c == ord('s'):
+            params['standard'] = not params['standard']
         elif c == curses.KEY_DOWN:
             params['fit_cost'] *= 0.9
         elif c == curses.KEY_UP:
