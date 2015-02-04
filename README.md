@@ -75,6 +75,7 @@ Controls:
     empty.
 * left/right: Lower or raise `exchange_prob`.
 * down/up: Lower or raise `fit_cost`.
+* s: Toggle between Lif and standard Life dynamics.
 
 ## Requirements
 
