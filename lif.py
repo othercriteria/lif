@@ -154,23 +154,25 @@ def gain_habitability(stasis):
     else:
         return { 'state': 0, 'stasis': stasis }
 
-def exchange(old, live_nbrs, stasis, parent):
-    if len(live_nbrs) == 0:
-        exchanger_stasis = stasis
+def exchange(grid, live_nbrs, stasis, parent):
+    conspecific_nbrs = [live_nbr for live_nbr in live_nbrs
+                        if grid[live_nbr]['parent'] == parent]
+    if len(conspecific_nbrs) == 0:
+        exchanger_stasis = grid[random.choice(live_nbrs)]['stasis']
     else:
-        conspecific_nbrs = [live_nbr for live_nbr in live_nbrs
-                            if old[live_nbr]['parent'] == parent]
-        if len(conspecific_nbrs) == 0:
-            exchanger_stasis = old[random.choice(live_nbrs)]['stasis']
-        else:
-            exchanger_stasis = old[random.choice(conspecific_nbrs)]['stasis']
+        exchanger_stasis = grid[random.choice(conspecific_nbrs)]['stasis']
     
     new_stasis = set()
     new_stasis.update(stasis.intersection(exchanger_stasis))
     for s in stasis.symmetric_difference(exchanger_stasis):
         if random.random() < 0.5:
             new_stasis.add(s)
-    return child(frozenset(new_stasis), parent)
+    diff = set()
+    for s in range(9):
+        if random.random() < params['mut_prob']:
+            diff.add(s)
+    new_stasis_mut = new_stasis.symmetric_difference(diff)
+    return child(frozenset(new_stasis_mut), parent)
 
 def step_cell(grid_old, grid_new, live_nbrs_old, loc):
     cell = grid_old[loc]
@@ -188,7 +190,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
                 grid_new[loc] = cell
                 return 'none'
         else:
-            if random.random() < params['exchange_prob']:
+            if num_live_nbrs > 0 and random.random() < params['exchange_prob']:
                 grid_new[loc] = exchange(grid_old, live_nbrs_old,
                                          stasis, cell['parent'])
                 return 'exchange'
