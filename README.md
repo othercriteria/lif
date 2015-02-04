@@ -46,7 +46,8 @@ stasis set as a bit vector of length 9.
   selection is only from among these conspecifics. The living cell
   takes as its new stasis set the consensus of its old stasis set and
   that of its neighbor, where disagreement is resolved with
-  independent probability 0.5.
+  independent probability 0.5. This is followed by mutation, as in
+  settlement.
 * Death: A new empty cell comes into existence with stasis set
   {0,1,2,3,4,5,6,7,8}.
 * Gain of habitability: An empty cell experiences this with
