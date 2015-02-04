@@ -53,6 +53,28 @@ stasis set as a bit vector of length 9.
   probability `hab_prob`. A randomly chosen 1 in the stasis set is
   flipped to 0.
 
+## Demonstration
+
+Running the script in the console as `./lif.py` (having made it
+executable with `chmod u+x lif.py` if necessary) starts a visual
+demonstration of this model. Modifying model parameters requires
+making edits to the script. In addition to those described above,
+`size` determines the dimensions of the cell grid on which the
+demonstration runs.
+
+Controls:
+* q: Quits program.
+* r: Restarts simulation.
+* space: Cycles through display modes for living cells.
+  * "stasis": Length of cell's stasis set.
+  * "parent": Cell's parent.
+  * "max": Maximum value in cell's stasis set, "x" if stasis set is
+    empty.
+  * "min": Minimum value in cell's stasis set, "x" if stasis set is
+    empty.
+* left/right: Lower or raise `exchange_prob`.
+* down/up: Lower or raise `fit_cost`.
+
 ## Requirements
 
 * A reasonably modern copy of Python
