@@ -30,7 +30,28 @@ change over time, with a tendency to become increasingly habitable.
 
 These processes are denoted *settlement*, *birth*, *exchange*,
 *death*, and *gain of habitability* (suggestions for a better name
-welcome).
+welcome) and are sketched out below. We can alternatively think of the
+stasis set as a bit vector of length 9.
+* Settlement or birth: If an empty cell has a number of living
+  neighbors not in its stasis set, it becomes alive. If this number of
+  neighbors is 0, it forms a new lineage having a stasis set with each
+  bit on with independent probability `init_stasis_p`. If the number
+  of neighbors is not 0, one of the neighbors will become its parent
+  with probability proportional to exp(-`fit_cost` * #(parent stasis
+  set)). It will inherit this parent's stasis set with each bit
+  flipped with independent probability `mut_prob`.
+* Exchange: A living cell with living neighbors experiences this with
+  probability `exchange_prob`. A random neighbor is picked
+  uniformly. If any of the neighbors is of the same lineage, the
+  selection is only from among these conspecifics. The living cell
+  takes as its new stasis set the consensus of its old stasis set and
+  that of its neighbor, where disagreement is resolved with
+  independent probability 0.5.
+* Death: A new empty cell comes into existence with stasis set
+  {0,1,2,3,4,5,6,7,8}.
+* Gain of habitability: An empty cell experiences this with
+  probability `hab_prob`. A randomly chosen 1 in the stasis set is
+  flipped to 0.
 
 ## Requirements
 
