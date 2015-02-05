@@ -19,7 +19,7 @@ params = { 'size': { 'x': 78, 'y': 17 },
            'exchange_prob': 0.01,
            'hab_prob': 1.0,
            'fit_cost': 5.0 }
-
+    
 def random_stasis(p):
     stasis = set()
     for s in range(9):
@@ -28,8 +28,10 @@ def random_stasis(p):
     return frozenset(stasis)
 
 def alive():
+    global parent_counter
+    parent_counter += 1
     return { 'state': 1, 'stasis': random_stasis(params['init_stasis_p']),
-             'parent': random.choice(ascii_letters) }
+             'parent': parent_counter }
 
 def child(stasis, parent):
     return { 'state': 1, 'stasis': stasis, 'parent': parent }
@@ -75,7 +77,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             if p == None:
                 grid_pad.addch(y, x, s)
             else:
-                attr = curses.color_pair(ord(p) % curses.COLORS)
+                attr = curses.color_pair(p % curses.COLORS)
                 attr |= emphasis
                 grid_pad.addch(y, x, s, attr)
         except curses.error:
@@ -103,7 +105,9 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                     else:
                         stasis_max = max(stasis)
                         draw(x, y, str(stasis_max), parent)
-                elif disp_type == 'parent': draw(x, y, cell['parent'], parent)
+                elif disp_type == 'parent':
+                    parent_char = ascii_letters[cell['parent'] % 52]
+                    draw(x, y, parent_char, parent)
             else:
                 empty_lens.append(stasis_len)
                 draw(x, y, ' ')
@@ -111,7 +115,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
         
     fitness = [ (genotypes[g], list(g)) for g in genotypes ]
     fitness.sort(reverse = True)
-    offspring = [ (parents[p], p) for p in parents ]
+    offspring = [ (parents[p], ascii_letters[p % 52]) for p in parents ]
     offspring.sort(reverse = True)
 
     stat_win.erase()
@@ -315,6 +319,7 @@ def do_sim(stdscr, grid_pad, stat_win):
                       live_nbrs_old, live_nbrs_new, nbr_dict)
         generation += 1
 
+parent_counter = 0
 def main(stdscr):
     # Setup curses display
     stdscr.nodelay(1)
