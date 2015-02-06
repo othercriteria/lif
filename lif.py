@@ -17,9 +17,10 @@ params = { 'size': { 'x': 78, 'y': 17 },
            'toroidal': True,
            'standard': False,
            'alive_p': 0.1,
-           'mut_p': 0.001,
-           'exchange_r': 0.01,
+           'mut_p': 0.0001,
+           'exchange_r': 0.001,
            'goh_r': 1.0,
+           'goh_m': 'max',
            'fit_cost': 5.0 }
     
 def random_stasis(p):
@@ -131,6 +132,8 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.resize(8, term_x - 1)
     stat_win.mvwin(term_y - 8, 0)
     rules = { False: 'Lif', True: 'Life' }[params['standard']]
+    if not params['standard']:
+        rules += ('/' + params['goh_m'][0:3])
     mode_line = '%s\tDisp: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
       (rules, disp_type, params['exchange_r'], params['fit_cost'])
     stat_win.addstr(0, 0, mode_line)
@@ -138,11 +141,11 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.addstr(1, 0, 'Population: %d' % num_alive)
     if num_alive > 0:
         mean_alive = sum(alive_lens) / num_alive
-        stat_win.addstr(2, 0, 'Mean alive complexity: %.2f' % mean_alive)
+        stat_win.addstr(2, 0, 'Alive mean #(stasis): %.2f' % mean_alive)
     num_empty = len(empty_lens)
     if num_empty > 0:
         mean_empty = sum(empty_lens) / num_empty
-        stat_win.addstr(3, 0, 'Mean empty habitability: %.2f' % mean_empty)
+        stat_win.addstr(3, 0, 'Empty mean #(stasis): %.2f' % mean_empty)
     stat_win.addstr(5, 0, str(fitness)[0:term_x-1])
     stat_win.addstr(6, 0, str(offspring)[0:term_x-1])
     stat_win.addstr(7, 0, 'Generation: %d' % generation)
@@ -164,8 +167,13 @@ def settlement(old, live_nbrs):
 
 def gain_habitability(stasis):
     if len(stasis) > 0:
-        lost = set([random.choice(list(stasis))])
-        return { 'state': 0, 'stasis': stasis.difference(lost) }
+        if params['goh_m'] == 'max':
+            pick = max(stasis)
+        elif params['goh_m'] == 'min':
+            pick = min(stasis)
+        elif params['goh_m'] == 'random':
+            pick = random.choice(list(stasis))
+        return { 'state': 0, 'stasis': stasis.difference(set([pick])) }
     else:
         return { 'state': 0, 'stasis': stasis }
 
@@ -301,6 +309,12 @@ def do_sim(stdscr, grid_pad, stat_win):
             return 'quit'
         elif c == ord(' '):
             mode = (mode + 1) % 4
+        elif c == ord('3'):
+            params['goh_m'] = 'max'
+        elif c == ord('1'):
+            params['goh_m'] = 'min'
+        elif c == ord('2'):
+            params['goh_m'] = 'random'
         elif c == ord('r'):
             return 'restart'
         elif c == ord('s'):
@@ -369,11 +383,16 @@ parser.add_argument('-exchange_r', metavar = 'r', type = float,
 parser.add_argument('-goh_r', metavar = 'r', type = float,
                     default = params['goh_r'],
                     help = 'Gain of habitability rate (default: %(default)s)')
+parser.add_argument('-pick', metavar = 'mode', type = str,
+                    default = params['goh_m'],
+                    help = 'Habitability gain pick (default: %(default)s)')
 parser.add_argument('-fit_cost', metavar = 'c', type = float,
                     default = params['fit_cost'],
                     help = 'Fitness cost (default: %(default)s)')
 parser.add_argument('-standard', action = 'store_true',
-                    help = 'Use standard Life dynamics.')
+                    help = 'Use standard Life dynamics')
+parser.add_argument('-nontoroidal', action = 'store_true',
+                    help = 'Use nontoroidal topology')
 args = parser.parse_args()
 params['size']['x'] = args.width
 params['size']['y'] = args.height
@@ -381,8 +400,10 @@ params['alive_p'] = args.alive_p
 params['mut_p'] = args.mut_p
 params['exchange_r'] = args.exchange_r
 params['goh_r'] = args.goh_r
+params['goh_m'] = args.pick
 params['fit_cost'] = args.fit_cost
 params['standard'] = args.standard
+params['toroidal'] = not args.nontoroidal
 
 curses.wrapper(main)
 
