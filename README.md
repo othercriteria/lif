@@ -30,18 +30,18 @@ change over time, with a tendency to become increasingly habitable.
 
 These processes are denoted *settlement*, *birth*, *exchange*,
 *death*, and *gain of habitability* (suggestions for a better name
-welcome) and are sketched out below. We can alternatively think of the
-stasis set as a bit vector of length 9.
+welcome) and are sketched out below. We can switch into thinking of the
+stasis set as a bit vector of length 9 when convenient.
 * Settlement or birth: If an empty cell has a number of living
   neighbors not in its stasis set, it becomes alive. If this number of
   neighbors is 0, it forms a new lineage having a stasis set with each
-  bit on with independent probability `init_stasis_p`. If the number
+  bit on with independent probability `alive_p`. If the number
   of neighbors is not 0, one of the neighbors will become its parent
   with probability proportional to exp(-`fit_cost` * #(parent stasis
   set)). It will inherit this parent's stasis set with each bit
-  flipped with independent probability `mut_prob`.
+  flipped with independent probability `mut_p`.
 * Exchange: A living cell with living neighbors experiences this with
-  probability `exchange_prob`. A random neighbor is picked
+  probability `exchange_r`. A random neighbor is picked
   uniformly. If any of the neighbors is of the same lineage, the
   selection is only from among these conspecifics. The living cell
   takes as its new stasis set the consensus of its old stasis set and
@@ -51,17 +51,23 @@ stasis set as a bit vector of length 9.
 * Death: A new empty cell comes into existence with stasis set
   {0,1,2,3,4,5,6,7,8}.
 * Gain of habitability: An empty cell experiences this with
-  probability `hab_prob`. A randomly chosen 1 in the stasis set is
-  flipped to 0.
+  probability `goh_r`. A chosen 1 in the stasis set is
+  flipped to 0. Depending on the mode `goh_m`, the largest (`max`),
+  the smallest (`min`), or a random element (`random`) is chosen.
 
 ## Demonstration
 
 Running the script in the console as `./lif.py` (having made it
 executable with `chmod u+x lif.py` if necessary) starts a visual
-demonstration of this model. Modifying model parameters requires
-making edits to the script. In addition to those described above,
-`size` determines the dimensions of the cell grid on which the
-demonstration runs.
+demonstration of this model. All model parameters can be specified as
+command line arguments (see `./lif.py -h` for details) or can be
+changed by editing the script.
+
+The first two positional arguments set the grid width and height. If
+the terminal is too small to display the entire grid, only the
+top-left corner will be seen but the dynamics are not
+affected. Particularly for the `max` gain of habitability mode, a grid
+size of at least 80 &times; 80 is suggested to avoid triviality.
 
 Controls:
 * q: Quits program.
@@ -76,6 +82,9 @@ Controls:
 * left/right: Lower or raise `exchange_prob`.
 * down/up: Lower or raise `fit_cost`.
 * s: Toggle between Lif and standard Life dynamics.
+* 1: Set gain of habitability mode to `min`.
+* 2: Set gain of habitability mode to `random`.
+* 3: Set gain of habitability mode to `max`.
 
 ## Requirements
 

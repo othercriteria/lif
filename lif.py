@@ -13,7 +13,7 @@ import curses
 import curses.wrapper
 
 # Model parameters
-params = { 'size': { 'x': 78, 'y': 17 },
+params = { 'size': { 'x': 80, 'y': 80 },
            'toroidal': True,
            'standard': False,
            'alive_p': 0.1,
