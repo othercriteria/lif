@@ -14,6 +14,7 @@ import curses.wrapper
 
 # Model parameters
 params = { 'size': { 'x': 78, 'y': 17 },
+           'toroidal': True,
            'standard': False,
            'alive_p': 0.1,
            'mut_p': 0.001,
@@ -42,10 +43,17 @@ def empty():
 
 def neighbors(loc):
     x, y = loc
-    return [(nx % params['size']['x'], ny % params['size']['y'])
-            for nx in range(x - 1, x + 2)
-            for ny in range(y - 1, y + 2)
-            if not (nx == x and ny == y)]
+    if params['toroidal']:
+        return [(nx % params['size']['x'], ny % params['size']['y'])
+                for nx in range(x - 1, x + 2)
+                for ny in range(y - 1, y + 2)
+                if not (nx == x and ny == y)]
+    else:
+        return [(nx, ny)
+                for nx in range(x - 1, x + 2)
+                for ny in range(y - 1, y + 2)
+                if 0 <= nx < params['size']['x']
+                if 0 <= ny < params['size']['y']]
 
 # http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python
 def weighted_choice(weights):
