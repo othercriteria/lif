@@ -6,6 +6,7 @@ from math import exp
 from string import ascii_letters
 from collections import defaultdict
 import random
+import argparse
 
 # Setup curses for sane output
 import curses
@@ -339,6 +340,18 @@ def main(stdscr):
 
         if r == 'quit':
             break
-        
+
+# Update parameters with command line arguments
+parser = argparse.ArgumentParser(description = 'Game of Life variant.')
+parser.add_argument('width', metavar = 'x', type = int, nargs = '?',
+                    default = params['size']['x'],
+                    help = 'Grid width (default: %(default)s)')
+parser.add_argument('height', metavar = 'y', type = int, nargs = '?',
+                    default = params['size']['y'],
+                    help = 'Grid height (default: %(default)s)')
+args = parser.parse_args()
+params['size']['x'] = args.width
+params['size']['y'] = args.height
+                
 curses.wrapper(main)
 
