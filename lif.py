@@ -15,10 +15,10 @@ import curses.wrapper
 # Model parameters
 params = { 'size': { 'x': 78, 'y': 17 },
            'standard': False,
-           'init_stasis_p': 0.1,
-           'mut_prob': 0.001,
-           'exchange_prob': 0.01,
-           'hab_prob': 1.0,
+           'alive_p': 0.1,
+           'mut_p': 0.001,
+           'exchange_r': 0.01,
+           'goh_r': 1.0,
            'fit_cost': 5.0 }
     
 def random_stasis(p):
@@ -31,7 +31,7 @@ def random_stasis(p):
 def alive():
     global parent_counter
     parent_counter += 1
-    return { 'state': 1, 'stasis': random_stasis(params['init_stasis_p']),
+    return { 'state': 1, 'stasis': random_stasis(params['alive_p']),
              'parent': parent_counter }
 
 def child(stasis, parent):
@@ -124,7 +124,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.mvwin(term_y - 8, 0)
     rules = { False: 'Lif', True: 'Life' }[params['standard']]
     mode_line = '%s\tDisp: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
-      (rules, disp_type, params['exchange_prob'], params['fit_cost'])
+      (rules, disp_type, params['exchange_r'], params['fit_cost'])
     stat_win.addstr(0, 0, mode_line)
     num_alive = len(alive_lens)
     stat_win.addstr(1, 0, 'Population: %d' % num_alive)
@@ -150,7 +150,7 @@ def settlement(old, live_nbrs):
     parent = old[settler]['parent']
     diff = set()
     for s in range(9):
-        if random.random() < params['mut_prob']:
+        if random.random() < params['mut_p']:
             diff.add(s)
     return child(settler_stasis.symmetric_difference(diff), parent)
 
@@ -176,7 +176,7 @@ def exchange(grid, live_nbrs, stasis, parent):
             new_stasis.add(s)
     diff = set()
     for s in range(9):
-        if random.random() < params['mut_prob']:
+        if random.random() < params['mut_p']:
             diff.add(s)
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return child(frozenset(new_stasis_mut), parent)
@@ -210,14 +210,14 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc):
     # Stasis
     if num_live_nbrs in stasis:
         if state == 0:
-            if random.random() < params['hab_prob']:
+            if random.random() < params['goh_r']:
                 grid_new[loc] = gain_habitability(stasis)
                 return 'habitability'
             else:
                 grid_new[loc] = cell
                 return 'none'
         else:
-            if num_live_nbrs > 0 and random.random() < params['exchange_prob']:
+            if num_live_nbrs > 0 and random.random() < params['exchange_r']:
                 grid_new[loc] = exchange(grid_old, live_nbrs_old,
                                          stasis, cell['parent'])
                 return 'exchange'
@@ -302,9 +302,9 @@ def do_sim(stdscr, grid_pad, stat_win):
         elif c == curses.KEY_UP:
             params['fit_cost'] /= 0.9
         elif c == curses.KEY_LEFT:
-            params['exchange_prob'] *= 0.9
+            params['exchange_r'] *= 0.9
         elif c == curses.KEY_RIGHT:
-            params['exchange_prob'] /= 0.9
+            params['exchange_r'] /= 0.9
         
         if generation % 2 == 0:
             grid_old, live_nbrs_old = grid_0, live_nbrs_0
@@ -349,9 +349,32 @@ parser.add_argument('width', metavar = 'x', type = int, nargs = '?',
 parser.add_argument('height', metavar = 'y', type = int, nargs = '?',
                     default = params['size']['y'],
                     help = 'Grid height (default: %(default)s)')
+parser.add_argument('-alive_p', metavar = 'p', type = float,
+                    default = params['alive_p'],
+                    help = 'Alive stasis bit prob. (default: %(default)s)')
+parser.add_argument('-mut_p', metavar = 'p', type = float,
+                    default = params['mut_p'],
+                    help = 'Mutation bit prob. (default: %(default)s)')
+parser.add_argument('-exchange_r', metavar = 'r', type = float,
+                    default = params['exchange_r'],
+                    help = 'Exchange rate (default: %(default)s)')
+parser.add_argument('-goh_r', metavar = 'r', type = float,
+                    default = params['goh_r'],
+                    help = 'Gain of habitability rate (default: %(default)s)')
+parser.add_argument('-fit_cost', metavar = 'c', type = float,
+                    default = params['fit_cost'],
+                    help = 'Fitness cost (default: %(default)s)')
+parser.add_argument('-standard', action = 'store_true',
+                    help = 'Use standard Life dynamics.')
 args = parser.parse_args()
 params['size']['x'] = args.width
 params['size']['y'] = args.height
-                
+params['alive_p'] = args.alive_p
+params['mut_p'] = args.mut_p
+params['exchange_r'] = args.exchange_r
+params['goh_r'] = args.goh_r
+params['fit_cost'] = args.fit_cost
+params['standard'] = args.standard
+
 curses.wrapper(main)
 
