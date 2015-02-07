@@ -55,6 +55,10 @@ stasis set as a bit vector of length 9 when convenient.
   flipped to 0. Depending on the mode `goh_m`, the largest (`max`),
   the smallest (`min`), or a random element (`random`) is chosen.
 
+In the absence of an infinite gird, I default to a toroidal
+(wrap-around) topology. This can be turned off using the `toroidal`
+parameter but the non-uniformity is annoying.
+
 ## Demonstration
 
 Running the script in the console as `./lif.py` (having made it
