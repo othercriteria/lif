@@ -4,6 +4,8 @@ Demonstration of a
 [Conway's Game of Life](http://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
 variant where the dynamics vary locally.
 
+For an informal, blog-y treatment, see my post [I want more Life](http://mesokurtosis.com/posts/2015-02-19-lif.html).
+
 ## Model
 
 The standard Game of Life plays out on a square grid where each cell
