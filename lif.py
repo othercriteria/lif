@@ -132,6 +132,15 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     offspring = [ (parents[p], ascii_letters[p % 52]) for p in parents ]
     offspring.sort(reverse = True)
 
+    # See http://en.wikipedia.org/wiki/Gini_coefficient for formula
+    sy, siy = 0, 0
+    n = len(offspring)
+    if n > 0:
+        for i, o in enumerate(reversed(offspring)):
+            sy += o[0]
+            siy += o[0] * (i+1)
+        stats['gini'] = 2 * siy / (n * sy) - (n + 1) / n
+    
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
     stat_win.mvwin(term_y - 8, 0)
@@ -369,7 +378,8 @@ def main(stdscr):
     # Setup output file
     outfile = open(params['outfile'], 'w')
     fieldnames = ['generation',
-                  'num_alive', 'mean_alive_stasis', 'mean_empty_stasis']
+                  'num_alive', 'mean_alive_stasis', 'mean_empty_stasis',
+                  'gini']
     outwriter = csv.DictWriter(outfile, fieldnames=fieldnames)
     outwriter.writeheader()
     
