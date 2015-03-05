@@ -7,6 +7,7 @@ from string import ascii_letters
 from collections import defaultdict
 import random
 import argparse
+import csv
 
 # Setup curses for sane output
 import curses
@@ -21,7 +22,8 @@ params = { 'size': { 'x': 80, 'y': 80 },
            'exchange_r': 0.001,
            'goh_r': 1.0,
            'goh_m': 'max',
-           'fit_cost': 5.0 }
+           'fit_cost': 5.0,
+           'outfile': 'lif_stats.csv' }
     
 def random_stasis(p):
     stasis = set()
@@ -66,6 +68,8 @@ def weighted_choice(weights):
 
 def display(grid, events, generation, grid_pad, stat_win, stdscr,
             disp_type = 'stasis'):
+    stats = { 'generation': generation }
+    
     genotypes = defaultdict(int)
     parents = defaultdict(int)
     alive_lens = []
@@ -139,19 +143,24 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.addstr(0, 0, mode_line)
     num_alive = len(alive_lens)
     stat_win.addstr(1, 0, 'Population: %d' % num_alive)
+    stats['num_alive'] = num_alive
     if num_alive > 0:
         mean_alive = sum(alive_lens) / num_alive
         stat_win.addstr(2, 0, 'Alive mean #(stasis): %.2f' % mean_alive)
+        stats['mean_alive_stasis'] = mean_alive
     num_empty = len(empty_lens)
     if num_empty > 0:
         mean_empty = sum(empty_lens) / num_empty
         stat_win.addstr(3, 0, 'Empty mean #(stasis): %.2f' % mean_empty)
+        stats['mean_empty_stasis'] = mean_empty
     stat_win.addstr(5, 0, str(fitness)[0:term_x-1])
     stat_win.addstr(6, 0, str(offspring)[0:term_x-1])
     stat_win.addstr(7, 0, 'Generation: %d' % generation)
     stat_win.noutrefresh()
 
     curses.doupdate()
+
+    return stats
 
 def settlement(old, live_nbrs):
     probs = [exp(-params['fit_cost'] * len(old[n]['stasis']))
@@ -280,7 +289,7 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
 
     return events
 
-def do_sim(stdscr, grid_pad, stat_win):
+def do_sim(stdscr, grid_pad, stat_win, outwriter):
     grid_0 = {}
     grid_1 = {}
     live_nbrs_0 = {}
@@ -336,7 +345,10 @@ def do_sim(stdscr, grid_pad, stat_win):
             grid_new, live_nbrs_new = grid_0, live_nbrs_0
 
         disp = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
-        display(grid_old, events, generation, grid_pad, stat_win, stdscr, disp)
+        statrow = display(grid_old, events, generation,
+                          grid_pad, stat_win, stdscr, disp)
+
+        outwriter.writerow(statrow)
         
         events = step(grid_old, grid_new,
                       live_nbrs_old, live_nbrs_new, nbr_dict)
@@ -354,11 +366,18 @@ def main(stdscr):
     grid_pad = curses.newpad(params['size']['y'], params['size']['x'])
     stat_win = curses.newwin(0, 0, 0, 0)
 
+    # Setup output file
+    outfile = open(params['outfile'], 'w')
+    fieldnames = ['generation',
+                  'num_alive', 'mean_alive_stasis', 'mean_empty_stasis']
+    outwriter = csv.DictWriter(outfile, fieldnames=fieldnames)
+    outwriter.writeheader()
+    
     while True:
         grid_pad.erase()
         stat_win.erase()
         
-        r = do_sim(stdscr, grid_pad, stat_win)
+        r = do_sim(stdscr, grid_pad, stat_win, outwriter)
 
         if r == 'quit':
             break
@@ -393,6 +412,9 @@ parser.add_argument('-standard', action = 'store_true',
                     help = 'Use standard Life dynamics')
 parser.add_argument('-nontoroidal', action = 'store_true',
                     help = 'Use nontoroidal topology')
+parser.add_argument('-output', metavar = 'FILE', type = str,
+                    default = params['outfile'],
+                    help = 'Output file for run statis (default: %(default)s)')
 args = parser.parse_args()
 params['size']['x'] = args.width
 params['size']['y'] = args.height
@@ -404,6 +426,7 @@ params['goh_m'] = args.pick
 params['fit_cost'] = args.fit_cost
 params['standard'] = args.standard
 params['toroidal'] = not args.nontoroidal
+params['outfile'] = args.output
 
 curses.wrapper(main)
 
