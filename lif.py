@@ -140,6 +140,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             sy += o[0]
             siy += o[0] * (i+1)
         stats['gini'] = 2 * siy / (n * sy) - (n + 1) / n
+    stats['species'] = n
     
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
@@ -152,7 +153,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.addstr(0, 0, mode_line)
     num_alive = len(alive_lens)
     stat_win.addstr(1, 0, 'Population: %d' % num_alive)
-    stats['num_alive'] = num_alive
+    stats['alive'] = num_alive
     if num_alive > 0:
         mean_alive = sum(alive_lens) / num_alive
         stat_win.addstr(2, 0, 'Alive mean #(stasis): %.2f' % mean_alive)
@@ -357,6 +358,15 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
         statrow = display(grid_old, events, generation,
                           grid_pad, stat_win, stdscr, disp)
 
+        settlements = 0
+        exchanges = 0
+        for k in events:
+            if events[k] == 'settlement':
+                settlements += 1
+            elif events[k] == 'exchange':
+                exchanges += 1
+        statrow['settlements'] = settlements
+        statrow['exchanges'] = exchanges
         outwriter.writerow(statrow)
         
         events = step(grid_old, grid_new,
@@ -377,8 +387,9 @@ def main(stdscr):
 
     # Setup output file
     outfile = open(params['outfile'], 'w')
-    fieldnames = ['generation',
-                  'num_alive', 'mean_alive_stasis', 'mean_empty_stasis',
+    fieldnames = ['generation', 'settlements', 'exchanges',
+                  'alive', 'species',
+                  'mean_alive_stasis', 'mean_empty_stasis',
                   'gini']
     outwriter = csv.DictWriter(outfile, fieldnames=fieldnames)
     outwriter.writeheader()
