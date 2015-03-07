@@ -132,15 +132,21 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     offspring = [ (parents[p], ascii_letters[p % 52]) for p in parents ]
     offspring.sort(reverse = True)
 
+    stats['species'] = len(offspring)
+
     # See http://en.wikipedia.org/wiki/Gini_coefficient for formula
-    sy, siy = 0, 0
-    n = len(offspring)
-    if n > 0:
-        for i, o in enumerate(reversed(offspring)):
-            sy += o[0]
-            siy += o[0] * (i+1)
-        stats['gini'] = 2 * siy / (n * sy) - (n + 1) / n
-    stats['species'] = n
+    def gini(ys):
+        n = len(ys)
+        sy, siy = 0, 0
+        if n > 0:
+            for i, y in enumerate(sorted(ys)):
+                sy += y[0]
+                siy += y[0] * (i+1)
+            return 2 * siy / (n * sy) - (n + 1) / n
+        else:
+            return None
+    stats['gini_species'] = gini(offspring)
+    stats['gini_stasis'] = gini(fitness)
     
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
@@ -390,7 +396,7 @@ def main(stdscr):
     fieldnames = ['generation', 'settlements', 'exchanges',
                   'alive', 'species',
                   'mean_alive_stasis', 'mean_empty_stasis',
-                  'gini']
+                  'gini_species', 'gini_stasis']
     outwriter = csv.DictWriter(outfile, fieldnames=fieldnames)
     outwriter.writeheader()
     
