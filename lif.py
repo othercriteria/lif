@@ -442,6 +442,8 @@ parser.add_argument('-nontoroidal', action = 'store_true',
 parser.add_argument('-output', metavar = 'FILE', type = str,
                     default = params['outfile'],
                     help = 'Output file for run statis (default: %(default)s)')
+parser.add_argument('-timing', action='store_true',
+                    help = 'Run with Python profiling.')
 args = parser.parse_args()
 params['size']['x'] = args.width
 params['size']['y'] = args.height
@@ -455,5 +457,8 @@ params['standard'] = args.standard
 params['toroidal'] = not args.nontoroidal
 params['outfile'] = args.output
 
-curses.wrapper(main)
-
+if args.timing:
+    import cProfile
+    cProfile.run('curses.wrapper(main)')
+else:
+    curses.wrapper(main)
