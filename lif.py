@@ -11,7 +11,6 @@ import csv
 
 # Setup curses for sane output
 import curses
-import curses.wrapper
 
 # Model parameters
 params = { 'size': { 'x': 80, 'y': 80 },
