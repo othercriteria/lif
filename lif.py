@@ -23,13 +23,52 @@ params = { 'size': { 'x': 80, 'y': 80 },
            'goh_m': 'max',
            'fit_cost': 5.0,
            'outfile': 'lif_stats.csv' }
-    
+
+class Stasis:
+    def __init__(self, initial = None):
+        if initial:
+            self.contents = set(initial)
+        else:
+            self.contents = set()
+
+    def copy(self):
+        new = Stasis()
+        new.contents = self.contents.copy()
+        return new
+            
+    def list(self):
+        return list(self.contents)
+
+    def set(self):
+        return set(self.contents)
+
+    def askey(self):
+        return self.contents.__str__()
+            
+    def gain(self, v):
+        self.contents.add(v)
+
+    def lose(self, v):
+        self.contents.remove(v)
+
+    def count(self):
+        return len(self.contents)
+
+    def contains(self, v):
+        return v in self.contents
+
+    def min(self):
+        return min(self.contents)
+
+    def max(self):
+        return max(self.contents)
+                
 def random_stasis(p):
-    stasis = set()
+    stasis = Stasis()
     for s in range(9):
         if random.random() < p:
-            stasis.add(s)
-    return frozenset(stasis)
+            stasis.gain(s)
+    return stasis
 
 def alive():
     global parent_counter
@@ -41,7 +80,7 @@ def child(stasis, parent):
     return { 'state': 1, 'stasis': stasis, 'parent': parent }
 
 def empty():
-    return { 'state': 0, 'stasis': frozenset(range(8)) }
+    return { 'state': 0, 'stasis': Stasis(range(8)) }
 
 def neighbors(loc):
     x, y = loc
@@ -100,21 +139,21 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
         for y in range(params['size']['y']):
             cell = grid[(x,y)]
             stasis = cell['stasis']
-            stasis_len = len(stasis)
+            stasis_len = stasis.count()
             if cell['state'] == 1:
                 parent = cell['parent']
                 parents[parent] += 1
-                genotypes[stasis] += 1
+                genotypes[stasis.askey()] += 1
                 alive_lens.append(stasis_len)
                 if disp_type == 'stasis':
                     draw(x, y, str(stasis_len), parent)
                 elif disp_type == 'min':
-                    if len(stasis) == 0: draw(x, y, 'x', parent)
+                    if stasis_len == 0: draw(x, y, 'x', parent)
                     else:
                         stasis_min = min(stasis)
                         draw(x, y, str(stasis_min), parent)
                 elif disp_type == 'max':
-                    if len(stasis) == 0: draw(x, y, 'x', parent)
+                    if stasis_len == 0: draw(x, y, 'x', parent)
                     else:
                         stasis_max = max(stasis)
                         draw(x, y, str(stasis_max), parent)
@@ -126,8 +165,8 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                 draw(x, y, ' ')
     grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
         
-    fitness = [ (genotypes[g], list(g)) for g in genotypes ]
-    fitness.sort(reverse = True)
+    fitness = [ (genotypes[g], g) for g in genotypes ]
+    fitness.sort(reverse = True, key = lambda p: p[0])
     offspring = [ (parents[p], ascii_letters[p % 52]) for p in parents ]
     offspring.sort(reverse = True)
 
@@ -138,7 +177,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
         n = len(ys)
         sy, siy = 0, 0
         if n > 0:
-            for i, y in enumerate(sorted(ys)):
+            for i, y in enumerate(sorted(ys, key = lambda p: p[0])):
                 sy += y[0]
                 siy += y[0] * (i+1)
             return 2 * siy / (n * sy) - (n + 1) / n
@@ -178,28 +217,16 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     return stats
 
 def settlement(old, live_nbrs):
-    probs = [exp(-params['fit_cost'] * len(old[n]['stasis']))
+    probs = [exp(-params['fit_cost'] * old[n]['stasis'].count())
              for n in live_nbrs]
     settler = live_nbrs[weighted_choice(probs)]
     settler_stasis = old[settler]['stasis']
     parent = old[settler]['parent']
-    diff = set()
-    for s in range(9):
-        if random.random() < params['mut_p']:
-            diff.add(s)
-    return child(settler_stasis.symmetric_difference(diff), parent)
 
-def gain_habitability(stasis):
-    if len(stasis) > 0:
-        if params['goh_m'] == 'max':
-            pick = max(stasis)
-        elif params['goh_m'] == 'min':
-            pick = min(stasis)
-        elif params['goh_m'] == 'random':
-            pick = random.choice(list(stasis))
-        return { 'state': 0, 'stasis': stasis.difference(set([pick])) }
-    else:
-        return { 'state': 0, 'stasis': stasis }
+    new_stasis = settler_stasis.set()
+    diff = { s for s in range(9) if random.random() < params['mut_p'] }
+    new_stasis_mut = new_stasis.symmetric_difference(diff)
+    return child(Stasis(new_stasis_mut), parent)
 
 def exchange(grid, live_nbrs, stasis, parent):
     conspecific_nbrs = [live_nbr for live_nbr in live_nbrs
@@ -209,17 +236,19 @@ def exchange(grid, live_nbrs, stasis, parent):
     else:
         exchanger_stasis = grid[random.choice(conspecific_nbrs)]['stasis']
     
-    new_stasis = set()
-    new_stasis.update(stasis.intersection(exchanger_stasis))
-    for s in stasis.symmetric_difference(exchanger_stasis):
+    p1, p2 = stasis.set(), exchanger_stasis.set()
+    new_stasis = p1.intersection(p2)
+    for s in p1.symmetric_difference(p2):
         if random.random() < 0.5:
             new_stasis.add(s)
-    diff = set()
-    for s in range(9):
-        if random.random() < params['mut_p']:
-            diff.add(s)
+    diff = { s for s in range(9) if random.random() < params['mut_p'] }
     new_stasis_mut = new_stasis.symmetric_difference(diff)
-    return child(frozenset(new_stasis_mut), parent)
+    return child(Stasis(new_stasis_mut), parent)
+
+def gain_of_heritability(stasis, goh_stasis):
+    new_stasis = stasis.copy()
+    goh_stasis(new_stasis)
+    return { 'state': 0, 'stasis': new_stasis }
 
 def step_cell_s(grid_old, grid_new, live_nbrs_old, loc):
     cell = grid_old[loc]
@@ -241,17 +270,20 @@ def step_cell_s(grid_old, grid_new, live_nbrs_old, loc):
             grid_new[loc] = empty()
             return 'death'
 
-def step_cell(grid_old, grid_new, live_nbrs_old, loc):
+def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh_stasis):
     cell = grid_old[loc]
     state = cell['state']
     stasis = cell['stasis']
     num_live_nbrs = len(live_nbrs_old)
 
     # Stasis
-    if num_live_nbrs in stasis:
+    if stasis.contains(num_live_nbrs):
         if state == 0:
             if random.random() < params['goh_r']:
-                grid_new[loc] = gain_habitability(stasis)
+                if stasis.count() == 0:
+                    grid_new[loc] = cell
+                    return 'none'
+                grid_new[loc] = gain_of_heritability(stasis, goh_stasis)
                 return 'habitability'
             else:
                 grid_new[loc] = cell
@@ -282,10 +314,23 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
     for loc in live_nbrs_old:
         live_nbrs_new[loc] = live_nbrs_old[loc][:]
 
+    # Determine active gain of habitability mechanism
+    if params['goh_m'] == 'max':
+        def goh_stasis(stasis):
+            stasis.lose(stasis.max())
+    elif params['goh_m'] == 'min':
+        def goh_stasis(stasis):
+            stasis.lose(stasis.min())
+    elif params['goh_m'] == 'random':
+        def goh_stasis(stasis):
+            pick = random.choice(stasis.list())
+            stasis.lose(pick)
+        
     events = {}
     for loc in grid_old:
         if not params['standard']:
-            change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc)
+            change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc,
+                               goh_stasis)
         else:
             change = step_cell_s(grid_old, grid_new, live_nbrs_old[loc], loc)
         if change == 'none' or change == 'habitability': continue
