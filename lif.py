@@ -267,8 +267,8 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
 
     return stats
 
-def settlement(grid_old, live_nbrs_old):
-    probs = [exp(-params['fit_cost'] * grid_old[n]['stasis'].count())
+def settlement(grid_old, live_nbrs_old, cost_func):
+    probs = [cost_func[grid_old[n]['stasis'].count()]
              for n in live_nbrs_old]
     settler = live_nbrs_old[weighted_choice(probs)]
     settler_stasis = grid_old[settler]['stasis']
@@ -301,7 +301,7 @@ def gain_of_heritability(stasis, goh_stasis):
     goh_stasis(new_stasis)
     return { 'state': 0, 'stasis': new_stasis }
 
-def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh_stasis):
+def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh_stasis, cost_func):
     cell = grid_old[loc]
     state = cell['state']
     stasis = cell['stasis']
@@ -334,7 +334,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh_stasis):
             grid_new[loc] = alive()
             return 'birth'
         else:
-            grid_new[loc] = settlement(grid_old, live_nbrs_old)
+            grid_new[loc] = settlement(grid_old, live_nbrs_old, cost_func)
             return 'settlement'
 
     # Loss
@@ -353,11 +353,17 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, neighborhood):
         def goh_stasis(stasis):
             pick = random.choice(stasis.list())
             stasis.lose(pick)
+
+    # Precompute cost function for settlement
+    cost_func = {}
+    f = params['fit_cost']
+    for s in range(9):
+        cost_func[s] = exp(-f * s)
         
     events = {}
     for loc in grid_old:
         change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc,
-                           goh_stasis)
+                           goh_stasis, cost_func)
         if change == 'none' or change == 'habitability': continue
         elif change == 'death':
             for n in neighborhood[loc]:
