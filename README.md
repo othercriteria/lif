@@ -87,14 +87,17 @@ Controls:
     empty.
 * left/right: Lower or raise `exchange_prob`.
 * down/up: Lower or raise `fit_cost`.
-* s: Toggle between Lif and standard Life dynamics.
 * 1: Set gain of habitability mode to `min`.
 * 2: Set gain of habitability mode to `random`.
 * 3: Set gain of habitability mode to `max`.
 
+Various statistics are computed and written to a file (`lif_stats.csv`
+by default) for later analysis.
+
 ## Requirements
 
-* A reasonably modern copy of Python
+* A reasonably modern copy of Python (developed and confirmed to work
+  in 2.7.9 and 3.4.3)
 * A terminal that can handle
   [curses](http://en.wikipedia.org/wiki/Curses_%28programming_library%29)
 * Time that it will take for a horribly inefficient implementation to
