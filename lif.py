@@ -34,6 +34,8 @@ d_min = {}
 d_max = {}
 d_gain = {}
 d_lose = {}
+d_lose_min = {}
+d_lose_max = {}
 for k in ks:
     count = sum(k)
     as_list = [i for i in range(9) if k[i]]
@@ -42,9 +44,6 @@ for k in ks:
     d_count[k] = sum(k)
     d_list[k] = as_list
     d_set[k] = as_set
-    if count > 0:
-        d_min[k] = min(as_list)
-        d_max[k] = max(as_list)
 
     d_gain[k] = {}
     for v in range(9):
@@ -57,6 +56,12 @@ for k in ks:
         k_l = list(k)
         k_l[v] = False
         d_lose[k][v] = tuple(k_l)
+
+    if count > 0:
+        d_min[k] = min(as_list)
+        d_max[k] = max(as_list)
+        d_lose_min[k] = d_lose[k][d_min[k]]
+        d_lose_max[k] = d_lose[k][d_max[k]]
 
 stasis_none = tuple([False] * 9)
 stasis_all = tuple([True] * 9)
@@ -103,6 +108,12 @@ class Stasis:
             
     def max(self):
         return d_max[self._contents]
+
+    def lose_min(self):
+        self._contents = d_lose_min[self._contents]
+
+    def lose_max(self):
+        self._contents = d_lose_max[self._contents]
      
 def iid_set(p):
     return { s for s in range(9) if random.random() < p }
@@ -122,16 +133,16 @@ def empty():
 def neighbors(loc):
     x, y = loc
     if params['toroidal']:
-        return [(nx % params['size']['x'], ny % params['size']['y'])
-                for nx in range(x - 1, x + 2)
-                for ny in range(y - 1, y + 2)
-                if not (nx == x and ny == y)]
+        return tuple([(nx % params['size']['x'], ny % params['size']['y'])
+                    for nx in range(x - 1, x + 2)
+                    for ny in range(y - 1, y + 2)
+                    if not (nx == x and ny == y)])
     else:
-        return [(nx, ny)
-                for nx in range(x - 1, x + 2)
-                for ny in range(y - 1, y + 2)
-                if 0 <= nx < params['size']['x']
-                if 0 <= ny < params['size']['y']]
+        return tuple([(nx, ny)
+                    for nx in range(x - 1, x + 2)
+                    for ny in range(y - 1, y + 2)
+                    if 0 <= nx < params['size']['x']
+                    if 0 <= ny < params['size']['y']])
 
 # http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python
 def weighted_choice(weights):
@@ -256,25 +267,25 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
 
     return stats
 
-def settlement(old, live_nbrs):
-    probs = [exp(-params['fit_cost'] * old[n]['stasis'].count())
-             for n in live_nbrs]
-    settler = live_nbrs[weighted_choice(probs)]
-    settler_stasis = old[settler]['stasis']
-    parent = old[settler]['parent']
+def settlement(grid_old, live_nbrs_old):
+    probs = [exp(-params['fit_cost'] * grid_old[n]['stasis'].count())
+             for n in live_nbrs_old]
+    settler = live_nbrs_old[weighted_choice(probs)]
+    settler_stasis = grid_old[settler]['stasis']
+    parent = grid_old[settler]['parent']
 
     new_stasis = settler_stasis.set()
     diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return child(Stasis(new_stasis_mut), parent)
 
-def exchange(grid, live_nbrs, stasis, parent):
-    conspecific_nbrs = [live_nbr for live_nbr in live_nbrs
-                        if grid[live_nbr]['parent'] == parent]
+def exchange(grid_old, live_nbrs_old, stasis, parent):
+    conspecific_nbrs = [live_nbr for live_nbr in live_nbrs_old
+                        if grid_old[live_nbr]['parent'] == parent]
     if len(conspecific_nbrs) == 0:
-        exchanger_stasis = grid[random.choice(live_nbrs)]['stasis']
+        exchanger_stasis = grid_old[random.choice(live_nbrs_old)]['stasis']
     else:
-        exchanger_stasis = grid[random.choice(conspecific_nbrs)]['stasis']
+        exchanger_stasis = grid_old[random.choice(conspecific_nbrs)]['stasis']
     
     p1, p2 = stasis.set(), exchanger_stasis.set()
     new_stasis = p1.intersection(p2)
@@ -330,17 +341,14 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh_stasis):
     grid_new[loc] = empty()
     return 'death'
 
-def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
-    for loc in live_nbrs_old:
-        live_nbrs_new[loc] = live_nbrs_old[loc][:]
-
+def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, neighborhood):
     # Determine active gain of habitability mechanism
     if params['goh_m'] == 'max':
         def goh_stasis(stasis):
-            stasis.lose(stasis.max())
+            stasis.lose_max()
     elif params['goh_m'] == 'min':
         def goh_stasis(stasis):
-            stasis.lose(stasis.min())
+            stasis.lose_min()
     elif params['goh_m'] == 'random':
         def goh_stasis(stasis):
             pick = random.choice(stasis.list())
@@ -352,38 +360,32 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
                            goh_stasis)
         if change == 'none' or change == 'habitability': continue
         elif change == 'death':
-            for n in nbr_dict[loc]:
+            for n in neighborhood[loc]:
                 live_nbrs_new[n].remove(loc)
         elif change == 'settlement':
-            for n in nbr_dict[loc]:
+            for n in neighborhood[loc]:
                 live_nbrs_new[n].append(loc)
             events[loc] = 'settlement'
         elif change == 'exchange':
             events[loc] = 'exchange'
         elif change == 'birth':
-            for n in nbr_dict[loc]:
+            for n in neighborhood[loc]:
                 live_nbrs_new[n].append(loc)
 
     return events
 
 def do_sim(stdscr, grid_pad, stat_win, outwriter):
-    grid_0 = {}
-    grid_1 = {}
-    live_nbrs_0 = {}
-    live_nbrs_1 = {}
-    nbr_dict = {}
+    # Initialize grid, neighborhoods, and alive neighbor pointers
+    grid = {}
+    neighborhood = {}
+    live_nbrs = {}
     for x in range(params['size']['x']):
         for y in range(params['size']['y']):
             loc = (x,y)
             nbrs = neighbors(loc)
-            nbr_dict[loc] = nbrs
-            live_nbrs_0.setdefault(loc, [])
-            if random.random() < 0:
-                grid_0[loc] = alive()
-                for n in nbrs:
-                    live_nbrs_0.setdefault(n, []).append(loc)
-            else:
-                grid_0[loc] = empty()
+            neighborhood[loc] = nbrs
+            live_nbrs.setdefault(loc, [])
+            grid[loc] = empty()
 
     generation = 0
     mode = 0
@@ -412,15 +414,8 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
         elif c == curses.KEY_RIGHT:
             params['exchange_r'] /= 0.9
         
-        if generation % 2 == 0:
-            grid_old, live_nbrs_old = grid_0, live_nbrs_0
-            grid_new, live_nbrs_new = grid_1, live_nbrs_1
-        else:
-            grid_old, live_nbrs_old = grid_1, live_nbrs_1
-            grid_new, live_nbrs_new = grid_0, live_nbrs_0
-
         disp = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
-        statrow = display(grid_old, events, generation,
+        statrow = display(grid, events, generation,
                           grid_pad, stat_win, stdscr, disp)
 
         settlements = 0
@@ -433,9 +428,15 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
         statrow['settlements'] = settlements
         statrow['exchanges'] = exchanges
         outwriter.writerow(statrow)
+
+        grid_new = {}
+        live_nbrs_new = {}
+        for loc in live_nbrs:
+            live_nbrs_new[loc] = live_nbrs[loc][:]
+        events = step(grid, grid_new, live_nbrs, live_nbrs_new, neighborhood)
+        grid = grid_new
+        live_nbrs = live_nbrs_new
         
-        events = step(grid_old, grid_new,
-                      live_nbrs_old, live_nbrs_new, nbr_dict)
         generation += 1
 
 parent_counter = 0
