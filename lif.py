@@ -27,17 +27,16 @@ params = { 'size': { 'x': 80, 'y': 80 },
 class Stasis:
     def __init__(self, iter = None):
         self.contents = [False] * 9
-        self.uncounted = True
+        self._count = 0
         if iter:
             for i in iter:
                 self.contents[i] = True
+                self._count += 1
 
     def copy(self):
         new = Stasis()
         new.contents[:] = self.contents
-        if not self.uncounted:
-            new.uncounted = False
-            new._count = self._count
+        new._count = self._count
         return new
             
     def list(self):
@@ -51,16 +50,13 @@ class Stasis:
             
     def gain(self, v):
         self.contents[v] = True
-        self.uncounted = True
+        self._count += 1
 
     def lose(self, v):
         self.contents[v] = False
-        self.uncounted = True
+        self._count -= 1
 
     def count(self):
-        if self.uncounted:
-            self._count = sum(self.contents)
-            self.uncounted = False
         return self._count
 
     def contains(self, v):
@@ -70,7 +66,8 @@ class Stasis:
         for i in range(0, 9):
             if self.contents[i]:
                 return i
-
+        # Should never reach here
+            
     def max(self):
         for i in range(8, -1, -1):
             if self.contents[i]:
