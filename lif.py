@@ -24,67 +24,77 @@ params = { 'size': { 'x': 80, 'y': 80 },
            'fit_cost': 5.0,
            'outfile': 'lif_stats.csv' }
 
+# Precompute stasis operations
+from itertools import product
+ks = product([False,True], repeat=9)
+d_count = {}
+d_list = {}
+d_set = {}
+d_min = {}
+d_max = {}
+for k in ks:
+    count = sum(k)
+    as_list = [i for i in range(9) if k[i]]
+    as_set = {i for i in range(9) if k[i]}
+
+    d_count[k] = sum(k)
+    d_list[k] = as_list
+    d_set[k] = as_set
+    if count > 0:
+        d_min[k] = min(as_list)
+        d_max[k] = max(as_list)
+    
 class Stasis:
     def __init__(self, iter = None):
-        self.contents = [False] * 9
-        self._count = 0
+        arr = [False] * 9
         if iter:
             for i in iter:
-                self.contents[i] = True
-                self._count += 1
+                arr[i] = True
+        self._contents = tuple(arr)
 
     def copy(self):
         new = Stasis()
-        new.contents[:] = self.contents
-        new._count = self._count
+        new._contents = self._contents
         return new
-            
+
     def list(self):
-        return [i for i in range(9) if self.contents[i]]
+        return d_list[self._contents].copy()
 
     def set(self):
-        return { i for i in range(9) if self.contents[i] }
+        return d_set[self._contents].copy()
 
     def askey(self):
         return self.set().__str__()
             
     def gain(self, v):
-        self.contents[v] = True
-        self._count += 1
+        arr = list(self._contents)
+        arr[v] = True
+        self._contents = tuple(arr)
 
     def lose(self, v):
-        self.contents[v] = False
-        self._count -= 1
+        arr = list(self._contents)
+        arr[v] = False
+        self._contents = tuple(arr)
 
     def count(self):
-        return self._count
+        return d_count[self._contents]
 
     def contains(self, v):
-        return self.contents[v]
+        return self._contents[v]
 
     def min(self):
-        for i in range(0, 9):
-            if self.contents[i]:
-                return i
-        # Should never reach here
+        return d_min[self._contents]
             
     def max(self):
-        for i in range(8, -1, -1):
-            if self.contents[i]:
-                return i
-        # Should never reach here
-                
-def random_stasis(p):
-    stasis = Stasis()
-    for s in range(9):
-        if random.random() < p:
-            stasis.gain(s)
-    return stasis
-
+        return d_max[self._contents]
+     
+def iid_set(p):
+    return { s for s in range(9) if random.random() < p }
+                        
 def alive():
     global parent_counter
     parent_counter += 1
-    return { 'state': 1, 'stasis': random_stasis(params['alive_p']),
+    return { 'state': 1, 'stasis': Stasis(iid_set(params['alive_p'])),
              'parent': parent_counter }
 
 def child(stasis, parent):
@@ -238,7 +248,7 @@ def settlement(old, live_nbrs):
     parent = old[settler]['parent']
 
     new_stasis = settler_stasis.set()
-    diff = { s for s in range(9) if random.random() < params['mut_p'] }
+    diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return child(Stasis(new_stasis_mut), parent)
 
@@ -255,7 +265,7 @@ def exchange(grid, live_nbrs, stasis, parent):
     for s in p1.symmetric_difference(p2):
         if random.random() < 0.5:
             new_stasis.add(s)
-    diff = { s for s in range(9) if random.random() < params['mut_p'] }
+    diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return child(Stasis(new_stasis_mut), parent)
 
