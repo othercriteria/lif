@@ -145,7 +145,29 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             attr = curses.color_pair(p % curses.COLORS)
             attr |= emphasis
             grid_pad.addch(y, x, s, attr)
-        
+
+    if disp_type == 'stasis':
+        def do_alive_disp(x, y, s, p):
+            draw(x, y, str(s.count()), p)
+    elif disp_type == 'min':
+        def do_alive_disp(x, y, s, p):
+            c = s.count()
+            if c == 0:
+                draw(x, y, 'x', p)
+            else:
+                draw(x, y, str(s.min()))
+    elif disp_type == 'max':
+        def do_alive_disp(x, y, s, p):
+            c = s.count()
+            if c == 0:
+                draw(x, y, 'x', p)
+            else:
+                draw(x, y, str(s.max()))
+    elif disp_type == 'parent':
+        def do_alive_disp(x, y, s, p):
+            parent_char = ascii_letters[p % 52]
+            draw(x, y, parent_char, p)
+                    
     for x in range(params['size']['x']):
         for y in range(params['size']['y']):
             cell = grid[(x,y)]
@@ -156,21 +178,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                 parents[parent] += 1
                 genotypes[stasis.askey()] += 1
                 alive_lens.append(stasis_len)
-                if disp_type == 'stasis':
-                    draw(x, y, str(stasis_len), parent)
-                elif disp_type == 'min':
-                    if stasis_len == 0: draw(x, y, 'x', parent)
-                    else:
-                        stasis_min = min(stasis)
-                        draw(x, y, str(stasis_min), parent)
-                elif disp_type == 'max':
-                    if stasis_len == 0: draw(x, y, 'x', parent)
-                    else:
-                        stasis_max = max(stasis)
-                        draw(x, y, str(stasis_max), parent)
-                elif disp_type == 'parent':
-                    parent_char = ascii_letters[cell['parent'] % 52]
-                    draw(x, y, parent_char, parent)
+                do_alive_disp(x, y, stasis, parent)
             else:
                 empty_lens.append(stasis_len)
                 draw(x, y, ' ')
