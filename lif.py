@@ -32,6 +32,8 @@ d_list = {}
 d_set = {}
 d_min = {}
 d_max = {}
+d_gain = {}
+d_lose = {}
 for k in ks:
     count = sum(k)
     as_list = [i for i in range(9) if k[i]]
@@ -43,6 +45,18 @@ for k in ks:
     if count > 0:
         d_min[k] = min(as_list)
         d_max[k] = max(as_list)
+
+    d_gain[k] = {}
+    for v in range(9):
+        k_l = list(k)
+        k_l[v] = True
+        d_gain[k][v] = tuple(k_l)
+
+    d_lose[k] = {}
+    for v in range(9):
+        k_l = list(k)
+        k_l[v] = False
+        d_lose[k][v] = tuple(k_l)
     
 class Stasis:
     def __init__(self, iter = None):
@@ -67,14 +81,10 @@ class Stasis:
         return self.set().__str__()
             
     def gain(self, v):
-        arr = list(self._contents)
-        arr[v] = True
-        self._contents = tuple(arr)
+        self._contents = d_gain[self._contents][v]
 
     def lose(self, v):
-        arr = list(self._contents)
-        arr[v] = False
-        self._contents = tuple(arr)
+        self._contents = d_lose[self._contents][v]
 
     def count(self):
         return d_count[self._contents]
