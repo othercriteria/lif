@@ -194,9 +194,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
     stat_win.mvwin(term_y - 8, 0)
-    rules = { False: 'Lif', True: 'Life' }[params['standard']]
-    if not params['standard']:
-        rules += ('/' + params['goh_m'][0:3])
+    rules = 'Lif/' + params['goh_m'][0:3]
     mode_line = '%s\tDisp: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
       (rules, disp_type, params['exchange_r'], params['fit_cost'])
     stat_win.addstr(0, 0, mode_line)
@@ -254,26 +252,6 @@ def gain_of_heritability(stasis, goh_stasis):
     new_stasis = stasis.copy()
     goh_stasis(new_stasis)
     return { 'state': 0, 'stasis': new_stasis }
-
-def step_cell_s(grid_old, grid_new, live_nbrs_old, loc):
-    cell = grid_old[loc]
-    state = cell['state']
-    num_live_nbrs = len(live_nbrs_old)
-
-    if state == 0:
-        if num_live_nbrs == 3:
-            grid_new[loc] = alive()
-            return 'birth'
-        else:
-            grid_new[loc] = cell
-            return 'none'
-    else:
-        if num_live_nbrs == 2 or num_live_nbrs == 3:
-            grid_new[loc] = cell
-            return 'none'
-        else:
-            grid_new[loc] = empty()
-            return 'death'
 
 def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh_stasis):
     cell = grid_old[loc]
@@ -333,11 +311,8 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, nbr_dict):
         
     events = {}
     for loc in grid_old:
-        if not params['standard']:
-            change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc,
-                               goh_stasis)
-        else:
-            change = step_cell_s(grid_old, grid_new, live_nbrs_old[loc], loc)
+        change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc,
+                           goh_stasis)
         if change == 'none' or change == 'habitability': continue
         elif change == 'death':
             for n in nbr_dict[loc]:
@@ -391,8 +366,6 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
             params['goh_m'] = 'random'
         elif c == ord('r'):
             return 'restart'
-        elif c == ord('s'):
-            params['standard'] = not params['standard']
         elif c == curses.KEY_DOWN:
             params['fit_cost'] *= 0.9
         elif c == curses.KEY_UP:
@@ -484,8 +457,6 @@ parser.add_argument('-pick', metavar = 'mode', type = str,
 parser.add_argument('-fit_cost', metavar = 'c', type = float,
                     default = params['fit_cost'],
                     help = 'Fitness cost (default: %(default)s)')
-parser.add_argument('-standard', action = 'store_true',
-                    help = 'Use standard Life dynamics')
 parser.add_argument('-nontoroidal', action = 'store_true',
                     help = 'Use nontoroidal topology')
 parser.add_argument('-output', metavar = 'FILE', type = str,
@@ -502,7 +473,6 @@ params['exchange_r'] = args.exchange_r
 params['goh_r'] = args.goh_r
 params['goh_m'] = args.pick
 params['fit_cost'] = args.fit_cost
-params['standard'] = args.standard
 params['toroidal'] = not args.nontoroidal
 params['outfile'] = args.output
 
