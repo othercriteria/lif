@@ -139,15 +139,12 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
         elif events[loc] == 'exchange':
             emphasis = curses.A_REVERSE
         
-        try:
-            if p == None:
-                grid_pad.addch(y, x, s)
-            else:
-                attr = curses.color_pair(p % curses.COLORS)
-                attr |= emphasis
-                grid_pad.addch(y, x, s, attr)
-        except curses.error:
-            pass
+        if p == None:
+            grid_pad.addch(y, x, s)
+        else:
+            attr = curses.color_pair(p % curses.COLORS)
+            attr |= emphasis
+            grid_pad.addch(y, x, s, attr)
         
     for x in range(params['size']['x']):
         for y in range(params['size']['y']):
@@ -419,7 +416,7 @@ def main(stdscr):
     curses.use_default_colors()
     for i in range(0, curses.COLORS):
         curses.init_pair(i, i, -1)
-    grid_pad = curses.newpad(params['size']['y'], params['size']['x'])
+    grid_pad = curses.newpad(params['size']['y'], params['size']['x']+1)
     stat_win = curses.newwin(0, 0, 0, 0)
 
     # Setup output file
