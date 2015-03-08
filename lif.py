@@ -57,14 +57,20 @@ for k in ks:
         k_l = list(k)
         k_l[v] = False
         d_lose[k][v] = tuple(k_l)
-    
+
+stasis_none = tuple([False] * 9)
+stasis_all = tuple([True] * 9)
 class Stasis:
-    def __init__(self, iter = None):
-        arr = [False] * 9
-        if iter:
+    def __init__(self, iter = None, init_empty = False):
+        if init_empty:
+            self._contents = stasis_all
+        elif iter:
+            arr = [False] * 9
             for i in iter:
                 arr[i] = True
-        self._contents = tuple(arr)
+            self._contents = tuple(arr)
+        else:
+            self._contents = stasis_none
 
     def copy(self):
         new = Stasis()
@@ -111,7 +117,7 @@ def child(stasis, parent):
     return { 'state': 1, 'stasis': stasis, 'parent': parent }
 
 def empty():
-    return { 'state': 0, 'stasis': Stasis(range(8)) }
+    return { 'state': 0, 'stasis': Stasis(init_empty = True) }
 
 def neighbors(loc):
     x, y = loc
