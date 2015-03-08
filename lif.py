@@ -25,43 +25,48 @@ params = { 'size': { 'x': 80, 'y': 80 },
            'outfile': 'lif_stats.csv' }
 
 class Stasis:
-    def __init__(self, initial = None):
-        if initial:
-            self.contents = set(initial)
-        else:
-            self.contents = set()
+    def __init__(self, iter = None):
+        self.contents = [False] * 9
+        if iter:
+            for i in iter:
+                self.contents[i] = True
 
     def copy(self):
         new = Stasis()
-        new.contents = self.contents.copy()
+        new.contents[:] = self.contents
         return new
             
     def list(self):
-        return list(self.contents)
+        return [i for i in range(9) if self.contents[i]]
 
     def set(self):
-        return set(self.contents)
+        return { i for i in range(9) if self.contents[i] }
 
     def askey(self):
-        return self.contents.__str__()
+        return self.set().__str__()
             
     def gain(self, v):
-        self.contents.add(v)
+        self.contents[v] = True
 
     def lose(self, v):
-        self.contents.remove(v)
+        self.contents[v] = False
 
     def count(self):
-        return len(self.contents)
+        return sum(self.contents)
 
     def contains(self, v):
-        return v in self.contents
+        return self.contents[v]
 
     def min(self):
-        return min(self.contents)
+        for i in range(0, 9):
+            if self.contents[i]:
+                return i
 
     def max(self):
-        return max(self.contents)
+        for i in range(8, -1, -1):
+            if self.contents[i]:
+                return i
+        # Should never reach here
                 
 def random_stasis(p):
     stasis = Stasis()
