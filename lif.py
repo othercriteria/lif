@@ -127,9 +127,6 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     alive_lens = []
     empty_lens = []
 
-    # Get current terminal dimensions
-    term_y, term_x = stdscr.getmaxyx()
-
     def draw(x, y, s, p = None):
         loc = (x,y)
         if not loc in events:
@@ -182,7 +179,6 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             else:
                 empty_lens.append(stasis_len)
                 draw(x, y, ' ')
-    grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
         
     fitness = [ (genotypes[g], g) for g in genotypes ]
     fitness.sort(reverse = True, key = lambda p: p[0])
@@ -205,6 +201,10 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stats['gini_species'] = gini(offspring)
     stats['gini_stasis'] = gini(fitness)
     
+    # Get current terminal dimensions
+    term_y, term_x = stdscr.getmaxyx()
+    grid_pad.noutrefresh(0, 0, 0, 0, term_y - 9, term_x - 1)
+
     stat_win.erase()
     stat_win.resize(8, term_x - 1)
     stat_win.mvwin(term_y - 8, 0)
