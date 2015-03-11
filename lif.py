@@ -5,6 +5,7 @@ from __future__ import division
 from math import exp
 from string import ascii_letters
 from collections import defaultdict
+from itertools import product
 import random
 import argparse
 import csv
@@ -25,8 +26,7 @@ params = { 'size': { 'x': 80, 'y': 80 },
            'outfile': 'lif_stats.csv' }
 
 # Precompute stasis operations
-from itertools import product
-ks = product([False,True], repeat=9)
+ks = product([False,True], repeat = 9)
 d_count = {}
 d_list = {}
 d_set = {}
@@ -117,7 +117,7 @@ class Stasis:
      
 def iid_set(p):
     return { s for s in range(9) if random.random() < p }
-                        
+
 def alive():
     global parent_counter
     parent_counter += 1
@@ -158,8 +158,8 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     
     genotypes = defaultdict(int)
     parents = defaultdict(int)
-    alive_lens = []
-    empty_lens = []
+    alive_sum, alive_n = 0, 0
+    empty_sum, empty_n = 0, 0
 
     def draw(x, y, s, p = None):
         loc = (x,y)
@@ -177,23 +177,24 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             attr |= emphasis
             grid_pad.addch(y, x, s, attr)
 
+    num_str = '0123456789'
     if disp_type == 'stasis':
         def do_alive_disp(x, y, s, p):
-            draw(x, y, str(s.count()), p)
+            draw(x, y, num_str[s.count()], p)
     elif disp_type == 'min':
         def do_alive_disp(x, y, s, p):
             c = s.count()
             if c == 0:
                 draw(x, y, 'x', p)
             else:
-                draw(x, y, str(s.min()))
+                draw(x, y, num_str[s.min()])
     elif disp_type == 'max':
         def do_alive_disp(x, y, s, p):
             c = s.count()
             if c == 0:
                 draw(x, y, 'x', p)
             else:
-                draw(x, y, str(s.max()))
+                draw(x, y, num_str[s.max()])
     elif disp_type == 'parent':
         def do_alive_disp(x, y, s, p):
             parent_char = ascii_letters[p % 52]
@@ -208,10 +209,11 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
                 parent = cell['parent']
                 parents[parent] += 1
                 genotypes[stasis.askey()] += 1
-                alive_lens.append(stasis_len)
+                alive_sum += stasis_len
+                alive_n += 1
                 do_alive_disp(x, y, stasis, parent)
             else:
-                empty_lens.append(stasis_len)
+                empty_sum += stasis_len
                 draw(x, y, ' ')
         
     fitness = [ (genotypes[g], g) for g in genotypes ]
@@ -246,18 +248,17 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     mode_line = '%s\tDisp: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
       (rules, disp_type, params['exchange_r'], params['fit_cost'])
     stat_win.addstr(0, 0, mode_line)
-    num_alive = len(alive_lens)
-    stat_win.addstr(1, 0, 'Population: %d' % num_alive)
-    stats['alive'] = num_alive
-    if num_alive > 0:
-        mean_alive = sum(alive_lens) / num_alive
-        stat_win.addstr(2, 0, 'Alive mean #(stasis): %.2f' % mean_alive)
-        stats['mean_alive_stasis'] = mean_alive
-    num_empty = len(empty_lens)
-    if num_empty > 0:
-        mean_empty = sum(empty_lens) / num_empty
-        stat_win.addstr(3, 0, 'Empty mean #(stasis): %.2f' % mean_empty)
-        stats['mean_empty_stasis'] = mean_empty
+    stat_win.addstr(1, 0, 'Population: %d' % alive_n)
+    stats['alive'] = alive_n
+    if alive_n > 0:
+        alive_mean = alive_sum / alive_n
+        stat_win.addstr(2, 0, 'Alive mean #(stasis): %.2f' % alive_mean)
+        stats['alive_mean_stasis'] = alive_mean
+    empty_n = params['size']['x'] * params['size']['y'] - alive_n
+    if empty_n > 0:
+        empty_mean = empty_sum / empty_n
+        stat_win.addstr(3, 0, 'Empty mean #(stasis): %.2f' % empty_mean)
+        stats['empty_mean_stasis'] = empty_mean
     stat_win.addstr(5, 0, str(fitness)[0:term_x-1])
     stat_win.addstr(6, 0, str(offspring)[0:term_x-1])
     stat_win.addstr(7, 0, 'Generation: %d' % generation)
@@ -461,7 +462,7 @@ def main(stdscr):
     outfile = open(params['outfile'], 'w')
     fieldnames = ['generation', 'settlements', 'exchanges',
                   'alive', 'species',
-                  'mean_alive_stasis', 'mean_empty_stasis',
+                  'alive_mean_stasis', 'empty_mean_stasis',
                   'gini_species', 'gini_stasis']
     outwriter = csv.DictWriter(outfile, fieldnames=fieldnames)
     outwriter.writeheader()
