@@ -153,14 +153,14 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             draw(x, y, num_str[s_count[s]], p)
     elif disp_type == 'min':
         def do_alive_disp(x, y, s, p):
-            c = s.count()
+            c = s_count[s]
             if c == 0:
                 draw(x, y, 'x', p)
             else:
                 draw(x, y, num_str[s_min[s]])
     elif disp_type == 'max':
         def do_alive_disp(x, y, s, p):
-            c = s.count()
+            c = s_count[s]
             if c == 0:
                 draw(x, y, 'x', p)
             else:
@@ -317,7 +317,7 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, neighborhood):
             return Empty(s_lose_min[cell.stasis])
     elif params['goh_m'] == 'random':
         def goh(cell):
-            pick = random.choice(s_list[stasis])
+            pick = random.choice(s_list[cell.stasis])
             return Empty(s_lose[cell.stasis][pick])
 
     # Precompute cost function for settlement
