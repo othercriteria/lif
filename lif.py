@@ -252,7 +252,7 @@ def settlement(grid_old, live_nbrs_old, cost_func):
 
 def exchange(grid_old, live_nbrs_old, stasis, parent):
     conspecific_nbrs = [live_nbr for live_nbr in live_nbrs_old
-                        if grid_old[live_nbr].parent == parent]
+                        if grid_old[live_nbr].parent == parent.parent]
     if len(conspecific_nbrs) == 0:
         exchanger_stasis = grid_old[random.choice(live_nbrs_old)].stasis
     else:
@@ -323,7 +323,7 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, neighborhood):
     # Precompute cost function for settlement
     cost_func = {}
     f = params['fit_cost']
-    for s in range(9):
+    for s in range(10):
         cost_func[s] = exp(-f * s)
         
     events = {}
