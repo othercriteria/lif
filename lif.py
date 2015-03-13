@@ -123,15 +123,15 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
     alive_sum, alive_n = 0, 0
     empty_sum, empty_n = 0, 0
 
-    def draw(x, y, s, p = None):
-        loc = (x,y)
+    def draw(loc, s, p = None):
         if not loc in events:
             emphasis = 0
         elif events[loc] == 'settlement':
             emphasis = curses.A_BOLD
         elif events[loc] == 'exchange':
             emphasis = curses.A_REVERSE
-        
+
+        x, y = loc        
         if p == None:
             grid_pad.addch(y, x, s)
         else:
@@ -142,33 +142,28 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
     num_str = '0123456789'
     if disp['alive'] == 'stasis':
         def do_alive_disp(loc, s, p):
-            x, y = loc[0], loc[1]
-            draw(x, y, num_str[s_count[s]], p)
+            draw(loc, num_str[s_count[s]], p)
     elif disp['alive'] == 'min':
         def do_alive_disp(loc, s, p):
-            x, y = loc[0], loc[1]
             c = s_count[s]
             if c == 0:
-                draw(x, y, 'x', p)
+                draw(loc, 'x', p)
             else:
-                draw(x, y, num_str[s_min[s]])
+                draw(loc, num_str[s_min[s]])
     elif disp['alive'] == 'max':
         def do_alive_disp(loc, s, p):
-            x, y = loc[0], loc[1]
             c = s_count[s]
             if c == 0:
-                draw(x, y, 'x', p)
+                draw(loc, 'x', p)
             else:
-                draw(x, y, num_str[s_max[s]])
+                draw(loc, num_str[s_max[s]])
     elif disp['alive'] == 'parent':
         def do_alive_disp(loc, s, p):
-            x, y = loc[0], loc[1]
             parent_char = ascii_letters[p % 52]
-            draw(x, y, parent_char, p)
+            draw(loc, parent_char, p)
     if disp['empty']:
         def do_empty_disp(loc):
-            x, y = loc[0], loc[1]
-            draw(x, y, ' ')
+            draw(loc, ' ')
     else:
         def do_empty_disp(loc):
             pass
@@ -349,12 +344,12 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
                 live_nbrs_new[n].append(loc)
                 live_nbrs_num_new[n] += 1
             events[loc] = 'settlement'
-        elif change == 'exchange':
-            events[loc] = 'exchange'
         elif change == 'birth':
             for n in neighborhood[loc]:
                 live_nbrs_new[n].append(loc)
                 live_nbrs_num_new[n] += 1
+        elif change == 'exchange':
+            events[loc] = 'exchange'
 
     return events
 
