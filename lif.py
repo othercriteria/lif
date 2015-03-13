@@ -14,6 +14,8 @@ import csv
 # Setup curses for sane output
 import curses
 
+random.seed(137)
+
 # Model parameters
 params = { 'size': { 'x': 80, 'y': 80 },
            'toroidal': True,
@@ -106,36 +108,6 @@ class Alive():
 
 def iid_set(p):
     return { s for s in range(9) if runif() < p }
-
-def all_locs():
-    return ((x,y)
-            for x in range(params['size']['x'])
-            for y in range(params['size']['y']))
-
-# Generate valid grid locations
-valid_locs = set(all_locs())
-num_locs = len(valid_locs)
-
-def neighbors(loc):
-    x, y = loc
-
-    if params['toroidal']:
-        candidates = ((nx % params['size']['x'], ny % params['size']['y'])
-                      for nx in range(x - 1, x + 2)
-                      for ny in range(y - 1, y + 2)
-                      if not (nx == x and ny == y))
-    else:
-        candidates = ((nx, ny)
-                      for nx in range(x - 1, x + 2)
-                      for ny in range(y - 1, y + 2)
-                      if not (nx == x and ny == y))
-
-    return tuple(c for c in candidates if c in valid_locs)
-
-# Generate neighborhoods
-neighborhood = {}
-for loc in all_locs():
-    neighborhood[loc] = neighbors(loc)
 
 # http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python
 def weighted_choice(weights):
@@ -270,23 +242,25 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
 
     return stats
 
-def settlement(grid_old, live_nbrs_old, cost_func):
+def settlement(loc, grid_old, live_nbrs_old, cost_func):
     probs = [cost_func[s_count[grid_old[n].stasis]]
-             for n in live_nbrs_old]
-    settler = live_nbrs_old[weighted_choice(probs)]
-    settler_stasis = grid_old[settler].stasis
-    parent = grid_old[settler]
+             for n in live_nbrs_old[loc]]
+    settler = grid_old[live_nbrs_old[loc][weighted_choice(probs)]]
 
-    new_stasis = s_set[settler_stasis]
+    new_stasis = s_set[settler.stasis]
     diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
-    return parent.child(set_to_stasis(new_stasis_mut))
+    return settler.child(set_to_stasis(new_stasis_mut))
 
-def exchange(grid_old, live_nbrs_old, stasis, parent):
-    conspecific_nbrs = [live_nbr for live_nbr in live_nbrs_old
-                        if grid_old[live_nbr].parent == parent.parent]
+def exchange(loc, grid_old, live_nbrs_old):
+    exchangee = grid_old[loc]
+    stasis = exchangee.stasis
+    parent = exchangee.parent
+
+    live_nbrs = live_nbrs_old[loc]
+    conspecific_nbrs = [n for n in live_nbrs if grid_old[n].parent == parent]
     if len(conspecific_nbrs) == 0:
-        exchanger_stasis = grid_old[random.choice(live_nbrs_old)].stasis
+        exchanger_stasis = grid_old[random.choice(live_nbrs)].stasis
     else:
         exchanger_stasis = grid_old[random.choice(conspecific_nbrs)].stasis
     
@@ -297,16 +271,19 @@ def exchange(grid_old, live_nbrs_old, stasis, parent):
             new_stasis.add(s)
     diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
-    return parent.child(set_to_stasis(new_stasis_mut))
+    return exchangee.child(set_to_stasis(new_stasis_mut))
 
-def step_cell(grid_old, grid_new, live_nbrs_old, live_nbrs_num_old, loc,
+def step_cell(loc,
+              grid_old, grid_new,
+              live_nbrs_old, live_nbrs_num_old,
               goh, cost_func):
     cell = grid_old[loc]
     alive = cell.alive
     stasis = cell.stasis
+    num_live_nbrs = live_nbrs_num_old[loc]
 
     # Stasis
-    if stasis[live_nbrs_num_old]:
+    if stasis[num_live_nbrs]:
         if not alive:
             if runif() < params['goh_r']:
                 if s_count[stasis] == 0:
@@ -318,8 +295,8 @@ def step_cell(grid_old, grid_new, live_nbrs_old, live_nbrs_num_old, loc,
                 grid_new[loc] = cell
                 return 'none'
         else:
-            if live_nbrs_num_old > 0 and runif() < params['exchange_r']:
-                grid_new[loc] = exchange(grid_old, live_nbrs_old, stasis, cell)
+            if num_live_nbrs > 0 and runif() < params['exchange_r']:
+                grid_new[loc] = exchange(loc, grid_old, live_nbrs_old)
                 return 'exchange'
             else:
                 grid_new[loc] = cell
@@ -327,11 +304,11 @@ def step_cell(grid_old, grid_new, live_nbrs_old, live_nbrs_num_old, loc,
 
     # Gain
     if not alive:
-        if live_nbrs_num_old == 0:
+        if num_live_nbrs == 0:
             grid_new[loc] = Alive()
             return 'birth'
         else:
-            grid_new[loc] = settlement(grid_old, live_nbrs_old, cost_func)
+            grid_new[loc] = settlement(loc, grid_old, live_nbrs_old, cost_func)
             return 'settlement'
 
     # Loss
@@ -360,8 +337,9 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
         
     events = {}
     for loc in grid_old:
-        change = step_cell(grid_old, grid_new,
-                           live_nbrs_old[loc], live_nbrs_num_old[loc], loc,
+        change = step_cell(loc,
+                           grid_old, grid_new,
+                           live_nbrs_old, live_nbrs_num_old,
                            goh, cost_func)
         if change == 'none' or change == 'habitability': continue
         elif change == 'death':
@@ -385,11 +363,10 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
 def do_sim(stdscr, grid_pad, stat_win, outwriter):
     # Initialize grid, neighborhoods, and alive neighbor pointers
     grid = {}
-
     live_nbrs = {}
     live_nbrs_num = {}
     for loc in all_locs():
-        live_nbrs.setdefault(loc, [])
+        live_nbrs[loc] = []
         live_nbrs_num[loc] = 0
         grid[loc] = Empty()
 
@@ -398,6 +375,9 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
     disp_empty = True
     events = {}
     while True:
+        if generation == 100:
+            import sys; sys.exit()
+        
         # Handle use input
         c = stdscr.getch()
         if c == ord('q'):
@@ -527,6 +507,36 @@ params['goh_m'] = args.pick
 params['fit_cost'] = args.fit_cost
 params['toroidal'] = not args.nontoroidal
 params['outfile'] = args.output
+
+def all_locs():
+    return ((x,y)
+            for x in range(params['size']['x'])
+            for y in range(params['size']['y']))
+
+# Generate valid grid locations
+valid_locs = set(all_locs())
+num_locs = len(valid_locs)
+
+def neighbors(loc):
+    x, y = loc
+
+    if params['toroidal']:
+        candidates = ((nx % params['size']['x'], ny % params['size']['y'])
+                      for nx in range(x - 1, x + 2)
+                      for ny in range(y - 1, y + 2)
+                      if not (nx == x and ny == y))
+    else:
+        candidates = ((nx, ny)
+                      for nx in range(x - 1, x + 2)
+                      for ny in range(y - 1, y + 2)
+                      if not (nx == x and ny == y))
+
+    return tuple(c for c in candidates if c in valid_locs)
+
+# Generate neighborhoods
+neighborhood = {}
+for loc in all_locs():
+    neighborhood[loc] = neighbors(loc)
 
 if args.timing:
     import cProfile
