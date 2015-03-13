@@ -283,9 +283,6 @@ def step_cell(loc,
     if stasis[num_live_nbrs]:
         if not alive:
             if runif() < params['goh_r']:
-                if s_count[stasis] == 0:
-                    grid_new[loc] = cell
-                    return 'none'
                 grid_new[loc] = goh(cell)
                 return 'habitability'
             else:
@@ -372,46 +369,50 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
     disp_empty = True
     events = {}
     while True:
-        # Handle use input
-        c = stdscr.getch()
-        if c == ord('q'):
-            return 'quit'
-        elif c == ord(' '):
-            mode = (mode + 1) % 4
-        elif c == ord('p'):
-            disp_empty = not disp_empty
-        elif c == ord('3'):
-            params['goh_m'] = 'max'
-        elif c == ord('1'):
-            params['goh_m'] = 'min'
-        elif c == ord('2'):
-            params['goh_m'] = 'random'
-        elif c == ord('r'):
-            return 'restart'
-        elif c == curses.KEY_DOWN:
-            params['fit_cost'] *= 0.9
-        elif c == curses.KEY_UP:
-            params['fit_cost'] /= 0.9
-        elif c == curses.KEY_LEFT:
-            params['exchange_r'] *= 0.9
-        elif c == curses.KEY_RIGHT:
-            params['exchange_r'] /= 0.9
+        if generation == args.blind:
+            break
 
-        disp_alive = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
-        disp = { 'alive': disp_alive, 'empty': disp_empty }
-        statrow = display(grid, events, generation,
-                          grid_pad, stat_win, stdscr, disp)
+        if not args.blind:
+            # Handle use input
+            c = stdscr.getch()
+            if c == ord('q'):
+                return 'quit'
+            elif c == ord(' '):
+                mode = (mode + 1) % 4
+            elif c == ord('p'):
+                disp_empty = not disp_empty
+            elif c == ord('3'):
+                params['goh_m'] = 'max'
+            elif c == ord('1'):
+                params['goh_m'] = 'min'
+            elif c == ord('2'):
+                params['goh_m'] = 'random'
+            elif c == ord('r'):
+                return 'restart'
+            elif c == curses.KEY_DOWN:
+                params['fit_cost'] *= 0.9
+            elif c == curses.KEY_UP:
+                params['fit_cost'] /= 0.9
+            elif c == curses.KEY_LEFT:
+                params['exchange_r'] *= 0.9
+            elif c == curses.KEY_RIGHT:
+                params['exchange_r'] /= 0.9
 
-        settlements = 0
-        exchanges = 0
-        for k in events:
-            if events[k] == 'settlement':
-                settlements += 1
-            elif events[k] == 'exchange':
-                exchanges += 1
-        statrow['settlements'] = settlements
-        statrow['exchanges'] = exchanges
-        outwriter.writerow(statrow)
+            disp_alive = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
+            disp = { 'alive': disp_alive, 'empty': disp_empty }
+            statrow = display(grid, events, generation,
+                              grid_pad, stat_win, stdscr, disp)
+
+            settlements = 0
+            exchanges = 0
+            for k in events:
+                if events[k] == 'settlement':
+                    settlements += 1
+                elif events[k] == 'exchange':
+                    exchanges += 1
+            statrow['settlements'] = settlements
+            statrow['exchanges'] = exchanges
+            outwriter.writerow(statrow)
 
         grid_new = {}
         live_nbrs_new = {}
@@ -487,10 +488,14 @@ parser.add_argument('-nontoroidal', action = 'store_true',
                     help = 'Use nontoroidal topology')
 parser.add_argument('-output', metavar = 'FILE', type = str,
                     default = params['outfile'],
-                    help = 'Output file for run statis (default: %(default)s)')
+                    help = 'Output file for run stats (default: %(default)s)')
 parser.add_argument('-timing', action='store_true',
                     help = 'Run with Python profiling.')
+parser.add_argument('-blind', metavar = 'g', type = int,
+                    help = 'Profile without IO, terminate at set generation.')
 args = parser.parse_args()
+if args.blind:
+    args.timing = True
 params['size']['x'] = args.width
 params['size']['y'] = args.height
 params['alive_p'] = args.alive_p
@@ -534,6 +539,13 @@ for loc in all_locs():
 
 if args.timing:
     import cProfile
-    cProfile.run('curses.wrapper(main)')
+
+    # For consistent simulation outcome
+    random.seed(137)
+
+    if args.blind:
+        cProfile.run('do_sim(None, None, None, None)')
+    else:
+        cProfile.run('curses.wrapper(main)')
 else:
     curses.wrapper(main)
