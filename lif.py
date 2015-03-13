@@ -124,20 +124,24 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
     empty_sum, empty_n = 0, 0
 
     def draw(loc, s, p = None):
-        if not loc in events:
-            emphasis = 0
-        elif events[loc] == 'settlement':
-            emphasis = curses.A_BOLD
-        elif events[loc] == 'exchange':
-            emphasis = curses.A_REVERSE
-
-        x, y = loc        
-        if p == None:
-            grid_pad.addch(y, x, s)
+        x, y = loc
+        
+        if s == ' ':
+            grid_pad.addch(y, x, ' ')
         else:
-            attr = curses.color_pair(p % curses.COLORS)
-            attr |= emphasis
-            grid_pad.addch(y, x, s, attr)
+            if not loc in events:
+                emphasis = 0
+            elif events[loc] == 'settlement':
+                emphasis = curses.A_BOLD
+            elif events[loc] == 'exchange':
+                emphasis = curses.A_REVERSE
+
+            if p == None:
+                grid_pad.addch(y, x, s)
+            else:
+                attr = curses.color_pair(p % curses.COLORS)
+                attr |= emphasis
+                grid_pad.addch(y, x, s, attr)
 
     num_str = '0123456789'
     if disp['alive'] == 'stasis':
