@@ -106,6 +106,11 @@ class Alive():
 def iid_set(p):
     return { s for s in range(9) if random.random() < p }
 
+def all_locs():
+    return ((x,y)
+            for x in range(params['size']['x'])
+            for y in range(params['size']['y']))
+
 def neighbors(loc):
     x, y = loc
     if params['toroidal']:
@@ -128,8 +133,7 @@ def weighted_choice(weights):
         if rnd < 0:
             return i
 
-def display(grid, events, generation, grid_pad, stat_win, stdscr,
-            disp_type = 'stasis'):
+def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
     stats = { 'generation': generation }
     
     genotypes = defaultdict(int)
@@ -154,43 +158,53 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
             grid_pad.addch(y, x, s, attr)
 
     num_str = '0123456789'
-    if disp_type == 'stasis':
-        def do_alive_disp(x, y, s, p):
+    if disp['alive'] == 'stasis':
+        def do_alive_disp(loc, s, p):
+            x, y = loc[0], loc[1]
             draw(x, y, num_str[s_count[s]], p)
-    elif disp_type == 'min':
-        def do_alive_disp(x, y, s, p):
+    elif disp['alive'] == 'min':
+        def do_alive_disp(loc, s, p):
+            x, y = loc[0], loc[1]
             c = s_count[s]
             if c == 0:
                 draw(x, y, 'x', p)
             else:
                 draw(x, y, num_str[s_min[s]])
-    elif disp_type == 'max':
-        def do_alive_disp(x, y, s, p):
+    elif disp['alive'] == 'max':
+        def do_alive_disp(loc, s, p):
+            x, y = loc[0], loc[1]
             c = s_count[s]
             if c == 0:
                 draw(x, y, 'x', p)
             else:
                 draw(x, y, num_str[s_max[s]])
-    elif disp_type == 'parent':
-        def do_alive_disp(x, y, s, p):
+    elif disp['alive'] == 'parent':
+        def do_alive_disp(loc, s, p):
+            x, y = loc[0], loc[1]
             parent_char = ascii_letters[p % 52]
             draw(x, y, parent_char, p)
-                    
-    for x in range(params['size']['x']):
-        for y in range(params['size']['y']):
-            cell = grid[(x,y)]
-            stasis = cell.stasis
-            stasis_len = s_count[stasis]
-            if cell.alive:
-                parent = cell.parent
-                parents[parent] += 1
-                genotypes[s_str[stasis]] += 1
-                alive_sum += stasis_len
-                alive_n += 1
-                do_alive_disp(x, y, stasis, parent)
-            else:
-                empty_sum += stasis_len
-                draw(x, y, ' ')
+    if disp['empty']:
+        def do_empty_disp(loc):
+            x, y = loc[0], loc[1]
+            draw(x, y, ' ')
+    else:
+        def do_empty_disp(loc):
+            pass
+
+    for loc in all_locs():
+        cell = grid[loc]
+        stasis = cell.stasis
+        stasis_len = s_count[stasis]
+        if cell.alive:
+            parent = cell.parent
+            parents[parent] += 1
+            genotypes[s_str[stasis]] += 1
+            alive_sum += stasis_len
+            alive_n += 1
+            do_alive_disp(loc, stasis, parent)
+        else:
+            empty_sum += stasis_len
+            do_empty_disp(loc)
         
     fitness = [ (genotypes[g], g) for g in genotypes ]
     fitness.sort(reverse = True, key = lambda p: p[0])
@@ -222,7 +236,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr,
     stat_win.mvwin(term_y - 8, 0)
     rules = 'Lif/' + params['goh_m'][0:3]
     mode_line = '%s\tDisp: %s\tExchange prob.: %.2e\tFit. cost: %.2e' % \
-      (rules, disp_type, params['exchange_r'], params['fit_cost'])
+      (rules, disp['alive'], params['exchange_r'], params['fit_cost'])
     stat_win.addstr(0, 0, mode_line)
     stat_win.addstr(1, 0, 'Population: %d' % alive_n)
     stats['alive'] = alive_n
@@ -357,16 +371,15 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
     grid = {}
     neighborhood = {}
     live_nbrs = {}
-    for x in range(params['size']['x']):
-        for y in range(params['size']['y']):
-            loc = (x,y)
-            nbrs = neighbors(loc)
-            neighborhood[loc] = nbrs
-            live_nbrs.setdefault(loc, [])
-            grid[loc] = Empty()
+    for loc in all_locs():
+        nbrs = neighbors(loc)
+        neighborhood[loc] = nbrs
+        live_nbrs.setdefault(loc, [])
+        grid[loc] = Empty()
 
     generation = 0
     mode = 0
+    disp_empty = True
     events = {}
     while True:
         # Handle use input
@@ -375,6 +388,8 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
             return 'quit'
         elif c == ord(' '):
             mode = (mode + 1) % 4
+        elif c == ord('p'):
+            disp_empty = not disp_empty
         elif c == ord('3'):
             params['goh_m'] = 'max'
         elif c == ord('1'):
@@ -391,8 +406,9 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
             params['exchange_r'] *= 0.9
         elif c == curses.KEY_RIGHT:
             params['exchange_r'] /= 0.9
-        
-        disp = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
+
+        disp_alive = { 0: 'stasis', 1: 'parent', 2: 'max', 3: 'min' }[mode]
+        disp = { 'alive': disp_alive, 'empty': disp_empty }
         statrow = display(grid, events, generation,
                           grid_pad, stat_win, stdscr, disp)
 
