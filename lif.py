@@ -69,10 +69,16 @@ stasis_none = tuple([False] * 9)
 stasis_all = tuple([True] * 9)
 
 def set_to_stasis(s):
-    arr = [False] * 9
-    for i in s:
-        arr[i] = True
-    return tuple(arr)
+    l = len(s)
+    if l == 9:
+        return stasis_all
+    elif l == 0:
+        return stasis_none
+    else:
+        arr = [False] * 9
+        for i in s:
+            arr[i] = True
+        return tuple(arr)
         
 class Empty():
     def __init__(self, stasis = None):
