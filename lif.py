@@ -7,6 +7,7 @@ from string import ascii_letters
 from collections import defaultdict
 from itertools import product
 import random
+from random import random as runif
 import argparse
 import csv
 
@@ -104,13 +105,14 @@ class Alive():
         return new
 
 def iid_set(p):
-    return { s for s in range(9) if random.random() < p }
+    return { s for s in range(9) if runif() < p }
 
 def all_locs():
     return ((x,y)
             for x in range(params['size']['x'])
             for y in range(params['size']['y']))
 
+# Generate valid grid locations
 valid_locs = set(all_locs())
 num_locs = len(valid_locs)
 
@@ -130,9 +132,14 @@ def neighbors(loc):
 
     return tuple(c for c in candidates if c in valid_locs)
 
+# Generate neighborhoods
+neighborhood = {}
+for loc in all_locs():
+    neighborhood[loc] = neighbors(loc)
+
 # http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python
 def weighted_choice(weights):
-    rnd = random.random() * sum(weights)
+    rnd = runif() * sum(weights)
     for i, w in enumerate(weights):
         rnd -= w
         if rnd < 0:
@@ -286,22 +293,22 @@ def exchange(grid_old, live_nbrs_old, stasis, parent):
     p1, p2 = s_set[stasis], s_set[exchanger_stasis]
     new_stasis = p1.intersection(p2)
     for s in p1.symmetric_difference(p2):
-        if random.random() < 0.5:
+        if runif() < 0.5:
             new_stasis.add(s)
     diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return parent.child(set_to_stasis(new_stasis_mut))
 
-def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh, cost_func):
+def step_cell(grid_old, grid_new, live_nbrs_old, live_nbrs_num_old, loc,
+              goh, cost_func):
     cell = grid_old[loc]
     alive = cell.alive
     stasis = cell.stasis
-    num_live_nbrs = len(live_nbrs_old)
 
     # Stasis
-    if stasis[num_live_nbrs]:
+    if stasis[live_nbrs_num_old]:
         if not alive:
-            if random.random() < params['goh_r']:
+            if runif() < params['goh_r']:
                 if s_count[stasis] == 0:
                     grid_new[loc] = cell
                     return 'none'
@@ -311,9 +318,8 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh, cost_func):
                 grid_new[loc] = cell
                 return 'none'
         else:
-            if num_live_nbrs > 0 and random.random() < params['exchange_r']:
-                grid_new[loc] = exchange(grid_old, live_nbrs_old, stasis,
-                                         cell)
+            if live_nbrs_num_old > 0 and runif() < params['exchange_r']:
+                grid_new[loc] = exchange(grid_old, live_nbrs_old, stasis, cell)
                 return 'exchange'
             else:
                 grid_new[loc] = cell
@@ -321,7 +327,7 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh, cost_func):
 
     # Gain
     if not alive:
-        if num_live_nbrs == 0:
+        if live_nbrs_num_old == 0:
             grid_new[loc] = Alive()
             return 'birth'
         else:
@@ -332,7 +338,8 @@ def step_cell(grid_old, grid_new, live_nbrs_old, loc, goh, cost_func):
     grid_new[loc] = Empty()
     return 'death'
 
-def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, neighborhood):
+def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
+         live_nbrs_num_old, live_nbrs_num_new):
     # Determine active gain of habitability mechanism
     if params['goh_m'] == 'max':
         def goh(cell):
@@ -353,33 +360,37 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new, neighborhood):
         
     events = {}
     for loc in grid_old:
-        change = step_cell(grid_old, grid_new, live_nbrs_old[loc], loc,
+        change = step_cell(grid_old, grid_new,
+                           live_nbrs_old[loc], live_nbrs_num_old[loc], loc,
                            goh, cost_func)
         if change == 'none' or change == 'habitability': continue
         elif change == 'death':
             for n in neighborhood[loc]:
                 live_nbrs_new[n].remove(loc)
+                live_nbrs_num_new[n] -= 1
         elif change == 'settlement':
             for n in neighborhood[loc]:
                 live_nbrs_new[n].append(loc)
+                live_nbrs_num_new[n] += 1
             events[loc] = 'settlement'
         elif change == 'exchange':
             events[loc] = 'exchange'
         elif change == 'birth':
             for n in neighborhood[loc]:
                 live_nbrs_new[n].append(loc)
+                live_nbrs_num_new[n] += 1
 
     return events
 
 def do_sim(stdscr, grid_pad, stat_win, outwriter):
     # Initialize grid, neighborhoods, and alive neighbor pointers
     grid = {}
-    neighborhood = {}
+
     live_nbrs = {}
+    live_nbrs_num = {}
     for loc in all_locs():
-        nbrs = neighbors(loc)
-        neighborhood[loc] = nbrs
         live_nbrs.setdefault(loc, [])
+        live_nbrs_num[loc] = 0
         grid[loc] = Empty()
 
     generation = 0
@@ -430,11 +441,15 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
 
         grid_new = {}
         live_nbrs_new = {}
+        live_nbrs_num_new = {}
         for loc in live_nbrs:
             live_nbrs_new[loc] = live_nbrs[loc][:]
-        events = step(grid, grid_new, live_nbrs, live_nbrs_new, neighborhood)
+            live_nbrs_num_new[loc] = live_nbrs_num[loc]
+        events = step(grid, grid_new, live_nbrs, live_nbrs_new,
+                      live_nbrs_num, live_nbrs_num_new)
         grid = grid_new
         live_nbrs = live_nbrs_new
+        live_nbrs_num = live_nbrs_num_new
         
         generation += 1
 
