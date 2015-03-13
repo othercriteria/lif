@@ -14,8 +14,6 @@ import csv
 # Setup curses for sane output
 import curses
 
-random.seed(137)
-
 # Model parameters
 params = { 'size': { 'x': 80, 'y': 80 },
            'toroidal': True,
@@ -375,9 +373,6 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
     disp_empty = True
     events = {}
     while True:
-        if generation == 100:
-            import sys; sys.exit()
-        
         # Handle use input
         c = stdscr.getch()
         if c == ord('q'):
