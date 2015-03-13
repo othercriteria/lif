@@ -111,19 +111,24 @@ def all_locs():
             for x in range(params['size']['x'])
             for y in range(params['size']['y']))
 
+valid_locs = set(all_locs())
+num_locs = len(valid_locs)
+
 def neighbors(loc):
     x, y = loc
+
     if params['toroidal']:
-        return tuple([(nx % params['size']['x'], ny % params['size']['y'])
-                    for nx in range(x - 1, x + 2)
-                    for ny in range(y - 1, y + 2)
-                    if not (nx == x and ny == y)])
+        candidates = ((nx % params['size']['x'], ny % params['size']['y'])
+                      for nx in range(x - 1, x + 2)
+                      for ny in range(y - 1, y + 2)
+                      if not (nx == x and ny == y))
     else:
-        return tuple([(nx, ny)
-                    for nx in range(x - 1, x + 2)
-                    for ny in range(y - 1, y + 2)
-                    if 0 <= nx < params['size']['x']
-                    if 0 <= ny < params['size']['y']])
+        candidates = ((nx, ny)
+                      for nx in range(x - 1, x + 2)
+                      for ny in range(y - 1, y + 2)
+                      if not (nx == x and ny == y))
+
+    return tuple(c for c in candidates if c in valid_locs)
 
 # http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python
 def weighted_choice(weights):
@@ -244,7 +249,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
         alive_mean = alive_sum / alive_n
         stat_win.addstr(2, 0, 'Alive mean #(stasis): %.2f' % alive_mean)
         stats['alive_mean_stasis'] = alive_mean
-    empty_n = params['size']['x'] * params['size']['y'] - alive_n
+    empty_n = num_locs - alive_n
     if empty_n > 0:
         empty_mean = empty_sum / empty_n
         stat_win.addstr(3, 0, 'Empty mean #(stasis): %.2f' % empty_mean)
