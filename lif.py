@@ -82,16 +82,18 @@ def set_to_stasis(s):
         return tuple(arr)
         
 class Empty():
+    alive = False
+    
     def __init__(self, stasis = None):
-        self.alive = False
         if not stasis:
             self.stasis = stasis_all
         else:
             self.stasis = stasis
         
 class Alive():
+    alive = True
+    
     def __init__(self, blank = False):
-        self.alive = True
         if not blank:
             global parent_counter
             parent_counter += 1
