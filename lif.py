@@ -135,7 +135,7 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
                 emphasis = 0
             elif events[loc] == 'settlement':
                 emphasis = curses.A_BOLD
-            elif events[loc] == 'exchange':
+            elif events[loc][0:8] == 'exchange':
                 emphasis = curses.A_REVERSE
 
             if p == None:
@@ -247,30 +247,28 @@ def settlement(loc, grid_old, live_nbrs_old, cost_func):
     settler = grid_old[live_nbrs_old[loc][weighted_choice(probs)]]
 
     new_stasis = s_set[settler.stasis]
-    diff = iid_set(params['mut_p'])
-    new_stasis_mut = new_stasis.symmetric_difference(diff)
+    new_stasis_mut = new_stasis.symmetric_difference(iid_set(params['mut_p']))
     return settler.child(set_to_stasis(new_stasis_mut))
 
 def exchange(loc, grid_old, live_nbrs_old):
     exchangee = grid_old[loc]
-    stasis = exchangee.stasis
-    parent = exchangee.parent
 
-    live_nbrs = live_nbrs_old[loc]
-    conspecific_nbrs = [n for n in live_nbrs if grid_old[n].parent == parent]
-    if len(conspecific_nbrs) == 0:
-        exchanger_stasis = grid_old[random.choice(live_nbrs)].stasis
-    else:
+    conspecific_nbrs = [n for n in live_nbrs_old[loc]
+                        if grid_old[n].parent == exchangee.parent]
+    conspecific = (len(conspecific_nbrs) > 0)
+    if conspecific:
         exchanger_stasis = grid_old[random.choice(conspecific_nbrs)].stasis
+    else:
+        exchanger_stasis = grid_old[random.choice(live_nbrs_old[loc])].stasis
     
-    p1, p2 = s_set[stasis], s_set[exchanger_stasis]
+    p1, p2 = s_set[exchangee.stasis], s_set[exchanger_stasis]
     new_stasis = p1.intersection(p2)
     for s in p1.symmetric_difference(p2):
         if runif() < 0.5:
             new_stasis.add(s)
     diff = iid_set(params['mut_p'])
     new_stasis_mut = new_stasis.symmetric_difference(diff)
-    return exchangee.child(set_to_stasis(new_stasis_mut))
+    return exchangee.child(set_to_stasis(new_stasis_mut)), conspecific
 
 def step_cell(loc,
               grid_old, grid_new,
@@ -289,8 +287,12 @@ def step_cell(loc,
                 return 'none'
         else:
             if live_nbrs_num_old[loc] > 0 and runif() < params['exchange_r']:
-                grid_new[loc] = exchange(loc, grid_old, live_nbrs_old)
-                return 'exchange'
+                new, conspecific = exchange(loc, grid_old, live_nbrs_old)
+                grid_new[loc] = new
+                if conspecific:
+                    return 'exchange conspecific'
+                else:
+                    return 'exchange interspecific'
             else:
                 grid_new[loc] = cell
                 return 'none'
@@ -348,8 +350,9 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
             for n in neighborhood[loc]:
                 live_nbrs_new[n].append(loc)
                 live_nbrs_num_new[n] += 1
-        elif change == 'exchange':
-            events[loc] = 'exchange'
+        else:
+            # Exchange events
+            events[loc] = change
 
     return events
 
@@ -403,14 +406,18 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
                               grid_pad, stat_win, stdscr, disp)
 
             settlements = 0
-            exchanges = 0
+            exchanges_conspecific = 0
+            exchanges_interspecific = 0
             for k in events:
                 if events[k] == 'settlement':
                     settlements += 1
-                elif events[k] == 'exchange':
-                    exchanges += 1
+                elif events[k] == 'exchange conspecific':
+                    exchanges_conspecific += 1
+                elif events[k] == 'exchange interspecific':
+                    exchanges_interspecific += 1
             statrow['settlements'] = settlements
-            statrow['exchanges'] = exchanges
+            statrow['exchanges_conspecific'] = exchanges_conspecific
+            statrow['exchanges_interspecific'] = exchanges_interspecific
             outwriter.writerow(statrow)
 
         grid_new = {}
@@ -441,7 +448,8 @@ def main(stdscr):
 
     # Setup output file
     outfile = open(params['outfile'], 'w')
-    fieldnames = ['generation', 'settlements', 'exchanges',
+    fieldnames = ['generation', 'settlements',
+                  'exchanges_conspecific', 'exchanges_interspecific',
                   'alive', 'species',
                   'alive_mean_stasis', 'empty_mean_stasis',
                   'gini_species', 'gini_stasis']
