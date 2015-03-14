@@ -155,14 +155,14 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
             if c == 0:
                 draw(loc, 'x', p)
             else:
-                draw(loc, num_str[s_min[s]])
+                draw(loc, num_str[s_min[s]], p)
     elif disp['alive'] == 'max':
         def do_alive_disp(loc, s, p):
             c = s_count[s]
             if c == 0:
                 draw(loc, 'x', p)
             else:
-                draw(loc, num_str[s_max[s]])
+                draw(loc, num_str[s_max[s]], p)
     elif disp['alive'] == 'parent':
         def do_alive_disp(loc, s, p):
             parent_char = ascii_letters[p % 52]
