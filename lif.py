@@ -277,13 +277,10 @@ def step_cell(loc,
               live_nbrs_old, live_nbrs_num_old,
               goh, cost_func):
     cell = grid_old[loc]
-    alive = cell.alive
-    stasis = cell.stasis
-    num_live_nbrs = live_nbrs_num_old[loc]
 
     # Stasis
-    if stasis[num_live_nbrs]:
-        if not alive:
+    if cell.stasis[live_nbrs_num_old[loc]]:
+        if not cell.alive:
             if runif() < params['goh_r']:
                 grid_new[loc] = goh(cell)
                 return 'habitability'
@@ -291,7 +288,7 @@ def step_cell(loc,
                 grid_new[loc] = cell
                 return 'none'
         else:
-            if num_live_nbrs > 0 and runif() < params['exchange_r']:
+            if live_nbrs_num_old[loc] > 0 and runif() < params['exchange_r']:
                 grid_new[loc] = exchange(loc, grid_old, live_nbrs_old)
                 return 'exchange'
             else:
@@ -299,8 +296,8 @@ def step_cell(loc,
                 return 'none'
 
     # Gain
-    if not alive:
-        if num_live_nbrs == 0:
+    if not cell.alive:
+        if live_nbrs_num_old[loc] == 0:
             grid_new[loc] = Alive()
             return 'birth'
         else:
