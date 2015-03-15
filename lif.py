@@ -270,46 +270,6 @@ def exchange(loc, grid_old, live_nbrs_old):
     new_stasis_mut = new_stasis.symmetric_difference(diff)
     return exchangee.child(set_to_stasis(new_stasis_mut)), conspecific
 
-def step_cell(loc,
-              grid_old, grid_new,
-              live_nbrs_old, live_nbrs_num_old,
-              goh, cost_func):
-    cell = grid_old[loc]
-
-    # Stasis
-    if cell.stasis[live_nbrs_num_old[loc]]:
-        if not cell.alive:
-            if runif() < params['goh_r']:
-                grid_new[loc] = goh(cell)
-                return 'habitability'
-            else:
-                grid_new[loc] = cell
-                return 'none'
-        else:
-            if live_nbrs_num_old[loc] > 0 and runif() < params['exchange_r']:
-                new, conspecific = exchange(loc, grid_old, live_nbrs_old)
-                grid_new[loc] = new
-                if conspecific:
-                    return 'exchange conspecific'
-                else:
-                    return 'exchange interspecific'
-            else:
-                grid_new[loc] = cell
-                return 'none'
-
-    # Gain
-    if not cell.alive:
-        if live_nbrs_num_old[loc] == 0:
-            grid_new[loc] = Alive()
-            return 'birth'
-        else:
-            grid_new[loc] = settlement(loc, grid_old, live_nbrs_old, cost_func)
-            return 'settlement'
-
-    # Loss
-    grid_new[loc] = Empty()
-    return 'death'
-
 def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
          live_nbrs_num_old, live_nbrs_num_new):
     # Determine active gain of habitability mechanism
@@ -332,27 +292,47 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
         
     events = {}
     for loc in grid_old:
-        change = step_cell(loc,
-                           grid_old, grid_new,
-                           live_nbrs_old, live_nbrs_num_old,
-                           goh, cost_func)
-        if change == 'none' or change == 'habitability': continue
-        elif change == 'death':
-            for n in neighborhood[loc]:
-                live_nbrs_new[n].remove(loc)
-                live_nbrs_num_new[n] -= 1
-        elif change == 'settlement':
-            for n in neighborhood[loc]:
-                live_nbrs_new[n].append(loc)
-                live_nbrs_num_new[n] += 1
-            events[loc] = 'settlement'
-        elif change == 'birth':
-            for n in neighborhood[loc]:
-                live_nbrs_new[n].append(loc)
-                live_nbrs_num_new[n] += 1
+        cell = grid_old[loc]
+
+        # Stasis
+        if cell.stasis[live_nbrs_num_old[loc]]:
+            if not cell.alive:
+                if runif() < params['goh_r']:
+                    grid_new[loc] = goh(cell)
+                else:
+                    grid_new[loc] = cell
+            else:
+                if (live_nbrs_num_old[loc] > 0 and
+                    runif() < params['exchange_r']):
+                    new, conspecific = exchange(loc, grid_old, live_nbrs_old)
+                    grid_new[loc] = new
+                    if conspecific:
+                        events[loc] = 'exchange conspecific'
+                    else:
+                        events[loc] = 'exchange interspecific'
+                else:
+                    grid_new[loc] = cell
         else:
-            # Exchange events
-            events[loc] = change
+            # Gain
+            if not cell.alive:
+                if live_nbrs_num_old[loc] == 0:
+                    grid_new[loc] = Alive()
+                    for n in neighborhood[loc]:
+                        live_nbrs_new[n].append(loc)
+                        live_nbrs_num_new[n] += 1
+                else:
+                    grid_new[loc] = settlement(loc, grid_old,
+                                               live_nbrs_old, cost_func)
+                    for n in neighborhood[loc]:
+                        live_nbrs_new[n].append(loc)
+                        live_nbrs_num_new[n] += 1
+                    events[loc] = 'settlement'
+            else:
+                # Loss
+                grid_new[loc] = Empty()
+                for n in neighborhood[loc]:
+                    live_nbrs_new[n].remove(loc)
+                    live_nbrs_num_new[n] -= 1
 
     return events
 
