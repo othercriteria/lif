@@ -241,14 +241,20 @@ def display(grid, events, generation, grid_pad, stat_win, stdscr, disp):
 
     return stats
 
+def mutate(parent):
+    mut = iid_set(params['mut_p'])
+    if sum(mut) > 0:
+        new_stasis_mut = s_set[parent.stasis].symmetric_difference(mut)
+        return parent.child(set_to_stasis(new_stasis_mut))
+    else:
+        return parent
+
 def settlement(loc, grid_old, live_nbrs_old, cost_func):
     probs = [cost_func[s_count[grid_old[n].stasis]]
              for n in live_nbrs_old[loc]]
     settler = grid_old[live_nbrs_old[loc][weighted_choice(probs)]]
 
-    new_stasis = s_set[settler.stasis]
-    new_stasis_mut = new_stasis.symmetric_difference(iid_set(params['mut_p']))
-    return settler.child(set_to_stasis(new_stasis_mut))
+    return mutate(settler)
 
 def exchange(loc, grid_old, live_nbrs_old):
     exchangee = grid_old[loc]
@@ -262,13 +268,15 @@ def exchange(loc, grid_old, live_nbrs_old):
         exchanger_stasis = grid_old[random.choice(live_nbrs_old[loc])].stasis
     
     p1, p2 = s_set[exchangee.stasis], s_set[exchanger_stasis]
+    if p1 == p2:
+        return mutate(exchangee), conspecific
+
     new_stasis = p1.intersection(p2)
     for s in p1.symmetric_difference(p2):
         if runif() < 0.5:
             new_stasis.add(s)
-    diff = iid_set(params['mut_p'])
-    new_stasis_mut = new_stasis.symmetric_difference(diff)
-    return exchangee.child(set_to_stasis(new_stasis_mut)), conspecific
+    exchangee_new = exchangee.child(set_to_stasis(new_stasis))
+    return mutate(exchangee_new), conspecific
 
 def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
          live_nbrs_num_old, live_nbrs_num_new):
