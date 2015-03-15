@@ -4,7 +4,7 @@ from __future__ import division
 
 from math import exp
 from string import ascii_letters
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from itertools import product
 import random
 from random import random as runif
@@ -80,7 +80,7 @@ def set_to_stasis(s):
         for i in s:
             arr[i] = True
         return tuple(arr)
-        
+
 class Empty():
     alive = False
     
@@ -89,7 +89,8 @@ class Empty():
             self.stasis = stasis_all
         else:
             self.stasis = stasis
-        
+empty_init = Empty()
+                    
 class Alive():
     alive = True
     
@@ -337,7 +338,7 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
                     events[loc] = 'settlement'
             else:
                 # Loss
-                grid_new[loc] = Empty()
+                grid_new[loc] = empty_init
                 for n in neighborhood[loc]:
                     live_nbrs_new[n].remove(loc)
                     live_nbrs_num_new[n] -= 1
@@ -352,7 +353,7 @@ def do_sim(stdscr, grid_pad, stat_win, outwriter):
     for loc in all_locs():
         live_nbrs[loc] = []
         live_nbrs_num[loc] = 0
-        grid[loc] = Empty()
+        grid[loc] = empty_init
 
     generation = 0
     mode = 0
