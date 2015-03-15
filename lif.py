@@ -27,7 +27,6 @@ params = { 'size': { 'x': 80, 'y': 80 },
            'outfile': 'lif_stats.csv' }
 
 # Precompute stasis operations
-ks = product([False,True], repeat = 9)
 s_str = {}
 s_count = {}
 s_list = {}
@@ -38,7 +37,7 @@ s_gain = {}
 s_lose = {}
 s_lose_min = {}
 s_lose_max = {}
-for k in ks:
+for k in product([False,True], repeat = 9):
     count = sum(k)
     as_list = [i for i in range(9) if k[i]]
     as_set = {i for i in range(9) if k[i]}
@@ -89,8 +88,12 @@ class Empty():
             self.stasis = stasis_all
         else:
             self.stasis = stasis
+
 empty_init = Empty()
-                    
+empty = {}
+for k in product([False,True], repeat = 9):
+    empty[k] = Empty(k)
+
 class Alive():
     alive = True
     
@@ -284,14 +287,14 @@ def step(grid_old, grid_new, live_nbrs_old, live_nbrs_new,
     # Determine active gain of habitability mechanism
     if params['goh_m'] == 'max':
         def goh(cell):
-            return Empty(s_lose_max[cell.stasis])
+            return empty[s_lose_max[cell.stasis]]
     elif params['goh_m'] == 'min':
         def goh(cell):
-            return Empty(s_lose_min[cell.stasis])
+            return empty[s_lose_min[cell.stasis]]
     elif params['goh_m'] == 'random':
         def goh(cell):
             pick = random.choice(s_list[cell.stasis])
-            return Empty(s_lose[cell.stasis][pick])
+            return empty[s_lose[cell.stasis][pick]]
 
     # Precompute cost function for settlement
     cost_func = {}
