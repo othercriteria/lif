@@ -85,6 +85,10 @@ Controls:
     empty.
   * "min": Minimum value in cell's stasis set, "x" if stasis set is
     empty.
+* p: Toggle erasing alive sites after death. When turned off, the
+  visualization effectively shows the
+  [territory](http://mesokurtosis.com/posts/2015-03-15-lif-lessons.html)
+  held by each lineage.
 * left/right: Lower or raise `exchange_prob`.
 * down/up: Lower or raise `fit_cost`.
 * 1: Set gain of habitability mode to `min`.
@@ -100,5 +104,5 @@ by default) for later analysis.
   in 2.7.9 and 3.4.3)
 * A terminal that can handle
   [curses](http://en.wikipedia.org/wiki/Curses_%28programming_library%29)
-* Time that it will take for a horribly inefficient implementation to
+* Time that it will take for a horribly slow implementation to
   do its work
