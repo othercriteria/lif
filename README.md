@@ -73,7 +73,9 @@ The first two positional arguments set the grid width and height. If
 the terminal is too small to display the entire grid, only the
 top-left corner will be seen but the dynamics are not
 affected. Particularly for the `max` gain of habitability mode, a grid
-size of at least 80 &times; 80 is suggested to avoid triviality.
+size of at least 80 &times; 80 is suggested to avoid triviality. Keep
+in mind, though, that the computation time for a generation scales
+roughly with the number of grid cells.
 
 Controls:
 * q: Quits program.
