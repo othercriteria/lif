@@ -63,11 +63,19 @@ parameter but the non-uniformity is annoying.
 
 ## Demonstration
 
-Running the script in the console as `./lif.py` (having made it
-executable with `chmod u+x lif.py` if necessary) starts a visual
-demonstration of this model. All model parameters can be specified as
-command line arguments (see `./lif.py -h` for details) or can be
-changed by editing the script.
+To install the program, navigate to a destination directory and
+then run the standard sequence of commands:
+
+```
+git clone https://github.com/othercriteria/lif.git
+cd lif/
+./setup.py install
+```
+
+Once this is done, running the command `lif.py` in the console starts
+a visual demonstration of this model. All model parameters can be
+specified as command line arguments (see `lif.py -h` for details) or
+can be changed by editing the script wherever it has been installed.
 
 The first two positional arguments set the grid width and height. If
 the terminal is too small to display the entire grid, only the
