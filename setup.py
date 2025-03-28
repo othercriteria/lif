@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(name = 'lif',
       version = '0.1.0',
@@ -9,4 +9,5 @@ setup(name = 'lif',
       author_email = 'othercriteria@gmail.com',
       url = 'https://github.com/othercriteria/lif',
       scripts = ['lif.py'],
+      python_requires='>=3.4',
       )

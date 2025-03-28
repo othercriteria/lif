@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import division
+# division is default in Python 3
 
 from math import exp
 from string import ascii_letters

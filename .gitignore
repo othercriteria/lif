@@ -2,6 +2,11 @@
 .env
 *~
 build/
+dist/
+*.egg-info/
 .venv/
 .direnv/
 .envrc
+__pycache__/
+*.py[cod]
+*$py.class

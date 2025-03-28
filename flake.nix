@@ -17,6 +17,7 @@
             python3
             python3Packages.virtualenv
             python3Packages.pip
+            python3Packages.setuptools
           ];
 
           shellHook = ''
