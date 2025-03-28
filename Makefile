@@ -20,7 +20,9 @@ dev:
 	pip install -e .
 
 test:
-	python -m unittest discover -s tests
+	PYTHONPATH=. python -m unittest discover -s tests
+	@echo "Running math utility tests..."
+	python test_math.py
 
 lint:
 	ruff check lif/
@@ -40,5 +42,11 @@ clean:
 	rm -rf lif/**/__pycache__
 	rm -rf .ruff_cache
 	rm -rf .mypy_cache
+
+optimize:
+	python setup_cython.py build_ext --inplace
+
+benchmark:
+	python compare_optimizations.py
 
 all: lint typecheck test

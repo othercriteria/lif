@@ -13,3 +13,16 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+
+# Cython generated files
+*.c
+*.so
+*.pyd
+*.dll
+
+# Temporary test files
+test_curses.py
+test_curses_direct.py
+fix_curses.py
+test_grid_params_fixed.py
+run_tests.py
