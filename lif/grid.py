@@ -77,12 +77,20 @@ def settlement(
     # No need to calculate probabilities if there's only one neighbor
     if len(neighbors) == 1:
         settler = grid_old[neighbors[0]]
+        # Safety check: ensure settler is Alive
+        if not settler.alive:
+            return Alive()  # Return a new Alive cell if settler isn't alive
         return mutate(settler)
     
     # Pre-calculate probabilities for weighted choice
     probs = [cost_func[s_count[grid_old[n].stasis]] for n in neighbors]
-    settler = grid_old[neighbors[weighted_choice(probs)]]
-
+    selected_neighbor = neighbors[weighted_choice(probs)]
+    settler = grid_old[selected_neighbor]
+    
+    # Safety check: ensure settler is Alive
+    if not settler.alive:
+        return Alive()  # Return a new Alive cell if settler isn't alive
+    
     return mutate(settler)
 
 def exchange(
@@ -92,14 +100,32 @@ def exchange(
 ) -> Tuple[Alive, bool]:
     """Exchange genetic material with neighboring cells"""
     exchangee = grid_old[loc]
-
+    
+    # Safety check: ensure we have neighbors to exchange with
+    if not live_nbrs_old[loc]:
+        return mutate(exchangee), False
+        
+    # Find conspecific neighbors
     conspecific_nbrs = [n for n in live_nbrs_old[loc]
-                      if grid_old[n].parent == exchangee.parent]
+                      if grid_old[n].alive and 
+                         hasattr(grid_old[n], 'parent') and 
+                         hasattr(exchangee, 'parent') and
+                         grid_old[n].parent == exchangee.parent]
     conspecific = (len(conspecific_nbrs) > 0)
-    if conspecific:
-        exchanger_stasis = grid_old[random.choice(conspecific_nbrs)].stasis
+    
+    if conspecific and conspecific_nbrs:
+        exchanger = grid_old[random.choice(conspecific_nbrs)]
+        exchanger_stasis = exchanger.stasis
+    elif live_nbrs_old[loc]:
+        # Check for valid alive neighbors
+        valid_neighbors = [n for n in live_nbrs_old[loc] 
+                          if grid_old[n].alive and hasattr(grid_old[n], 'stasis')]
+        if not valid_neighbors:
+            return mutate(exchangee), False
+        exchanger = grid_old[random.choice(valid_neighbors)]
+        exchanger_stasis = exchanger.stasis
     else:
-        exchanger_stasis = grid_old[random.choice(live_nbrs_old[loc])].stasis
+        return mutate(exchangee), False
     
     p1, p2 = s_set[exchangee.stasis], s_set[exchanger_stasis]
     if p1 == p2:
@@ -109,6 +135,8 @@ def exchange(
     for s in p1.symmetric_difference(p2):
         if runif() < 0.5:
             new_stasis.add(s)
+    
+    # Create child with new stasis
     exchangee_new = exchangee.child(set_to_stasis(new_stasis))
     return mutate(exchangee_new), conspecific
 
@@ -151,6 +179,10 @@ def step(
     for loc in grid_old:
         cell = grid_old[loc]
         nb_num = live_nbrs_num_old[loc]  # Cache this value
+        
+        # Safety check: ensure nb_num is within bounds of stasis
+        if nb_num >= len(cell.stasis):
+            nb_num = len(cell.stasis) - 1
         
         # Stasis condition - most common case first
         if cell.stasis[nb_num]:

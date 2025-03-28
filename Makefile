@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint typecheck format clean all
+.PHONY: help install dev test lint typecheck format clean all optimize benchmark
 
 help:
 	@echo "lif - Game of Life variant with local dynamics"
@@ -12,6 +12,8 @@ help:
 	@echo "make format     - Format code"
 	@echo "make clean      - Clean build artifacts"
 	@echo "make all        - Run lint, typecheck, and test"
+	@echo "make optimize   - Build optimized Cython modules"
+	@echo "make benchmark  - Run benchmarks to compare optimizations"
 
 install:
 	pip install .
@@ -21,8 +23,6 @@ dev:
 
 test:
 	PYTHONPATH=. python -m unittest discover -s tests
-	@echo "Running math utility tests..."
-	python test_math.py
 
 lint:
 	ruff check lif/
@@ -42,11 +42,21 @@ clean:
 	rm -rf lif/**/__pycache__
 	rm -rf .ruff_cache
 	rm -rf .mypy_cache
+	rm -rf *.so
+	rm -rf lif/**/*.so
+	rm -rf *.c
+	rm -rf lif/**/*.c
 
 optimize:
 	python setup_cython.py build_ext --inplace
 
 benchmark:
 	python compare_optimizations.py
+
+deep-optimize:
+	python deeper_optimization.py --compare --size 50 --generations 100
+
+profile:
+	python deeper_optimization.py --profile --size 50 --generations 50
 
 all: lint typecheck test

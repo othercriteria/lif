@@ -17,9 +17,14 @@
             python3
             python3Packages.virtualenv
             gnumake
+            stdenv.cc.cc.lib  # Add libstdc++ for numpy
+            glibc
           ];
 
           shellHook = ''
+            # Set LD_LIBRARY_PATH to find libstdc++
+            export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
+            
             # Create a virtual environment if it doesn't exist
             if [ ! -d .venv ]; then
               echo "Creating virtual environment..."
@@ -31,7 +36,7 @@
             
             # Install the package and dev tools in development mode
             pip install -e .
-            pip install --quiet mypy ruff
+            pip install --quiet mypy ruff numba cython psutil numpy
             
             # Setup prompt
             export PS1="\n\[\033[1;32m\][lif:\[\033[1;34m\]\w\[\033[1;32m\]]\$\[\033[0m\] "

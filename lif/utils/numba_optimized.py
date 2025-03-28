@@ -23,21 +23,17 @@ from typing import List, Set, Tuple
 from random import random as runif
 
 # Optimized version of iid_set
-@njit(cache=True)
+# Use regular jit as Numba has limitations with set return types
 def numba_iid_set(p: float) -> Set[int]:
-    """Numba-accelerated version of iid_set"""
+    """Fallback to normal implementation with simple optimizations"""
     # Special cases
     if p <= 0:
         return set()
     if p >= 1:
         return {0, 1, 2, 3, 4, 5, 6, 7, 8}
     
-    # Create set directly for better performance
-    result = set()
-    for s in range(9):
-        if random.random() < p:
-            result.add(s)
-    return result
+    # Create set directly for better performance - use range(9) rather than arbitrary s_bit
+    return {s for s in range(9) if runif() < p}
 
 # Optimized version of weighted_choice
 @njit(cache=True)

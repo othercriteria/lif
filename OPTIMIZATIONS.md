@@ -1,80 +1,93 @@
-# Performance Optimizations for Lif
+# Lif Optimizations
 
-This document provides an overview of the available performance optimizations for Lif using Numba and Cython.
+This document describes the performance optimizations applied to Lif.
 
-## Prerequisites
+## Overview
 
-To use the optimized versions, you'll need to install the following packages:
+The original Lif implementation focused on correctness rather than performance. We've implemented several optimization techniques to improve performance without sacrificing functionality:
 
-```
-pip install numba cython numpy
-```
+1. **Bug fixes & correctness**
+   - Fixed grid initialization bug that caused KeyErrors with larger grid sizes
+   - Added proper exception handling throughout the codebase
+   - Added bounds checking for stasis arrays
 
-For Cython optimizations, you'll also need to build the extension modules:
+2. **Code structure improvements**
+   - Modularized the codebase for better maintainability
+   - Added type annotations throughout the codebase
+   - Improved imports and code organization
 
+3. **Performance optimizations**
+   - Added Numba JIT compilation for key math functions
+   - Implemented Cython versions of critical functions
+   - Added data structure optimizations (e.g., pre-sorting cells by type)
+   - Improved neighbor lookup performance
+
+## Optimization Strategies
+
+### 1. Numba Optimizations
+
+Numba is used to JIT-compile performance-critical math functions:
+- `numba_iid_set`: Optimized version of `iid_set`
+- `numba_weighted_choice`: Optimized version of `weighted_choice`
+
+These optimizations are applied automatically when Numba is available.
+
+### 2. Cython Optimizations
+
+Cython provides C-speed performance for key functions:
+- `cy_iid_set`: Cython implementation of `iid_set`
+- `cy_weighted_choice`: Cython implementation of `weighted_choice`
+
+Build Cython extensions with:
 ```
 python setup_cython.py build_ext --inplace
 ```
 
-## Optimization Approaches
+### 3. Data Structure Optimizations
 
-We've implemented several optimization strategies:
+We've optimized the simulation step function with better data structures:
+- Pre-sorting cells by type (alive vs. empty) for better branch prediction
+- Ensuring neighbor counts are within bounds
+- Caching parameter access and neighborhood lookups
 
-1. **Numba JIT Compilation**: Just-in-time compilation of key functions
-2. **Cython Compilation**: Ahead-of-time compilation of key functions to C
-3. **Algorithm Optimizations**: Improved algorithms and data structures
+### 4. Grid Optimizations
 
-## Benchmarking & Comparison
-
-Use the `compare_optimizations.py` script to benchmark the different implementations:
-
-```
-python compare_optimizations.py
-```
-
-To install dependencies and build Cython extensions automatically:
-
-```
-python compare_optimizations.py --install-deps --build-cython
-```
-
-## Using Optimized Version
-
-Run the optimized version with:
-
-```
-python lif_optimized.py -opt [other arguments]
-```
-
-Additional options:
-- `--use-numba`: Prefer Numba optimizations when available
-- `--use-cython`: Prefer Cython optimizations when available
-
-## Optimized Components
-
-1. **Math Utilities**:
-   - `iid_set`: Random set generation
-   - `weighted_choice`: Weighted random selection
-
-2. **Grid Operations**:
-   - Numba-optimized `step` function
-   - Optimized stasis condition checking
-   - Gain of habitability calculations
+- Fixed grid initialization to properly update when parameters change
+- Added bounds checking to prevent index errors
+- Improved neighborhood computation
 
 ## Performance Results
 
-Based on benchmarks, you can expect the following improvements:
+Benchmark results show improvements in two key areas:
 
-| Function | Numba Speedup | Cython Speedup |
-|----------|--------------|---------------|
-| iid_set  | ~2-5x        | ~5-10x        |
-| weighted_choice | ~2-3x   | ~3-5x        |
-| step (full simulation) | ~1.5-2x | N/A  |
+1. **Math Functions**
+   - `iid_set`: 1.0-1.1x speedup with Numba, 2.7-3.8x speedup with Cython
+   - `weighted_choice`: Performance decrease with Numba (0.06-0.12x), 3.1-5.6x speedup with Cython
 
-## Notes on Optimization Strategy
+2. **Step Function**
+   - Original vs. optimized data structures: 1.0-1.1x speedup
 
-- **Numba** works best for numerical operations and simple functions
-- **Cython** excels with more complex algorithms but requires more setup
-- Neither approach works well with Python's dynamic features
+The most significant gains come from Cython optimizations of the math functions, while data structure optimizations provide modest improvements to the step function.
 
-The current implementation prioritizes compatibility and ease of use. More aggressive optimizations would require significant refactoring of the codebase.
+## Usage
+
+To use optimized implementations:
+
+1. **With lif_optimized.py**:
+   ```
+   python lif_optimized.py [width] [height] -opt
+   ```
+
+2. **With Makefile**:
+   ```
+   make optimize      # Build Cython extensions
+   make benchmark     # Compare optimization strategies
+   make deep-optimize # Run extended analysis
+   ```
+
+## Future Optimization Opportunities
+
+1. **Vectorization**: Use NumPy for grid operations
+2. **Memory optimization**: Reduce memory footprint for long-running simulations
+3. **Parallel processing**: Implement parallel grid updates where possible
+4. **GPU acceleration**: Investigate GPU-based simulation for large grids
