@@ -53,6 +53,8 @@ def parse_args() -> argparse.Namespace:
                         help='Run with Python profiling.')
     parser.add_argument('-blind', metavar='g', type=int, 
                         help='Profile without IO, terminate at set generation.')
+    parser.add_argument('-generations', metavar='g', type=int,
+                        help='Terminate simulation after specified number of generations.')
     
     args = parser.parse_args()
     

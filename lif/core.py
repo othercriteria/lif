@@ -19,6 +19,10 @@ def do_sim(
     outwriter: Optional[Any]
 ) -> str:
     """Run the simulation"""
+    # Set default blind value if not set
+    if args is not None and not hasattr(args, 'blind'):
+        args.blind = 10  # Default to 10 generations in blind mode
+        
     # Initialize grid, neighborhoods, and alive neighbor pointers
     grid = {}
     live_nbrs: Dict[GridLocation, List[GridLocation]] = {}
@@ -33,7 +37,10 @@ def do_sim(
     disp_empty = True
     events: Dict[GridLocation, str] = {}
     while True:
+        # Check termination conditions
         if args and hasattr(args, 'blind') and generation == args.blind:
+            break
+        if args and hasattr(args, 'generations') and args.generations and generation == args.generations:
             break
 
         if not args or (hasattr(args, 'blind') and not args.blind) and stdscr is not None:

@@ -22,9 +22,10 @@ def all_locs() -> Iterator[GridLocation]:
         for y in range(params['size']['y'])
     )
 
-# Generate valid grid locations
-valid_locs: Set[GridLocation] = set(all_locs())
-num_locs: int = len(valid_locs)
+# These will be initialized when initialize_grid() is called
+valid_locs: Set[GridLocation] = set()
+num_locs: int = 0
+neighborhood: Neighborhood = {}
 
 def neighbors(loc: GridLocation) -> Tuple[GridLocation, ...]:
     """Get all neighbors for a location"""
@@ -47,10 +48,21 @@ def neighbors(loc: GridLocation) -> Tuple[GridLocation, ...]:
 
     return tuple(c for c in candidates if c in valid_locs)
 
-# Generate neighborhoods
-neighborhood: Neighborhood = {}
-for loc in all_locs():
-    neighborhood[loc] = neighbors(loc)
+def initialize_grid():
+    """Initialize grid data structures based on current parameters"""
+    global valid_locs, num_locs, neighborhood
+    
+    # Generate valid grid locations
+    valid_locs = set(all_locs())
+    num_locs = len(valid_locs)
+    
+    # Generate neighborhoods
+    neighborhood = {}
+    for loc in all_locs():
+        neighborhood[loc] = neighbors(loc)
+        
+# Initialize with default parameters
+initialize_grid()
 
 def settlement(
     loc: GridLocation,

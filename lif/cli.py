@@ -13,13 +13,18 @@ def run() -> None:
     args = parse_args()
     update_params(args)
     
+    # Important: Re-initialize grid after updating parameters
+    from .grid import initialize_grid
+    initialize_grid()
+    
     # Import after params update
     # Set args so they can be accessed in the simulation
     from . import core
     from .core import main
     core.args = args  # type: ignore
     
-    if args.timing:
+    # Handle blind mode or profiling
+    if args.blind or args.timing:
         import cProfile
 
         # For consistent simulation outcome
@@ -30,7 +35,14 @@ def run() -> None:
         else:
             cProfile.run('import curses; from lif.core import main; curses.wrapper(main)')
     else:
-        curses.wrapper(main)
+        # Try to run with curses, fall back to blind mode if it fails
+        try:
+            curses.wrapper(main)
+        except Exception as e:
+            print(f"Error initializing curses: {e}")
+            print("Falling back to blind mode with 10 generations...")
+            from .core import do_sim
+            do_sim(None, None, None, None)
 
 if __name__ == "__main__":
     run()
