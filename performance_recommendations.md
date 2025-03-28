@@ -90,13 +90,13 @@ Added Cython implementations of performance-critical functions:
 - `cy_iid_set`: 2.7-3.8x speedup
 - `cy_weighted_choice`: 3.1-5.7x speedup
 
-## Recommended Additional Optimizations
+## Recently Implemented Optimizations
 
-The following optimizations should still be considered:
+The following optimizations have been implemented and benchmarked:
 
-### 1. Memoize the cost function calculation in `step()`
+### 1. Memoize the cost function calculation in `step()` ✅
 
-The cost function calculation can be memoized since it only depends on the `fit_cost` parameter:
+The cost function calculation is now memoized since it only depends on the `fit_cost` parameter:
 
 ```python
 # Create a cache for cost functions with different fit_cost values
@@ -114,9 +114,13 @@ else:
     cost_func = step.cost_func_cache[f]
 ```
 
-### 2. Cache dictionary lookups in the `mutate` function
+**Benchmark results:**
+- Micro-benchmark: 12.4-12.6x speedup for the cost function calculation
+- Overall simulation: ~1.03x speedup
 
-Further optimize the `mutate` function by caching the parent stasis set lookup:
+### 2. Cache dictionary lookups in the `mutate` function ✅
+
+Optimized the `mutate` function by caching the parent stasis set lookup:
 
 ```python
 def mutate(parent):
@@ -137,7 +141,11 @@ def mutate(parent):
     return parent.child(set_to_stasis(new_stasis_mut))
 ```
 
-### 3. Vectorization for grid operations
+## Recommended Additional Optimizations
+
+The following optimizations should still be considered:
+
+### 1. Vectorization for grid operations
 
 For larger grids, consider implementing NumPy-based vectorization:
 
@@ -150,7 +158,7 @@ def process_cells_vectorized(grid, condition_matrix):
     # ...
 ```
 
-### 4. Precompute transition functions
+### 2. Precompute transition functions
 
 Create lookup tables for common transition patterns:
 
