@@ -1,9 +1,7 @@
 """Math utilities for Lif"""
 
-from typing import List, Set, Tuple, Dict, Any, TypeVar, Callable
-import random
 from random import random as runif
-from math import exp
+from typing import Any, List, Set, Tuple, TypeVar
 
 T = TypeVar('T')
 

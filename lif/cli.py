@@ -2,12 +2,10 @@
 """Command-line interface for Lif"""
 
 import curses
-import cProfile
 import random
-import argparse
-from typing import Any, Optional
 
-from .config import params, parse_args, update_params
+from .config import parse_args, update_params
+
 
 def run() -> None:
     """Main entry point for the application"""
@@ -16,11 +14,10 @@ def run() -> None:
     update_params(args)
     
     # Import after params update
-    from .core import main, do_sim
-    
     # Set args so they can be accessed in the simulation
     from . import core
-    core.args = args
+    from .core import main
+    core.args = args  # type: ignore
     
     if args.timing:
         import cProfile

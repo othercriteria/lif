@@ -1,14 +1,14 @@
 """Display functions for Lif"""
 
-from typing import Dict, List, Set, Tuple, Any, Optional
+import curses
 from collections import defaultdict
 from string import ascii_letters
-import curses
+from typing import Any, Dict, Optional, Tuple
 
-from ..stasis import s_count, s_min, s_max, s_str, StasisKey
 from ..config import params
-from .math import gini
 from ..grid import all_locs
+from ..stasis import StasisKey, s_count, s_max, s_min, s_str
+from .math import gini
 
 # Type definitions
 GridLocation = Tuple[int, int]
@@ -26,8 +26,8 @@ def display(
     """Display the grid and statistics"""
     stats = {'generation': generation}
     
-    genotypes = defaultdict(int)
-    parents = defaultdict(int)
+    genotypes: Dict[str, int] = defaultdict(int)
+    parents: Dict[int, int] = defaultdict(int)
     alive_sum, alive_n = 0, 0
     empty_sum, empty_n = 0, 0
 
@@ -37,7 +37,7 @@ def display(
         if s == ' ':
             grid_pad.addch(y, x, ' ')
         else:
-            if not loc in events:
+            if loc not in events:
                 emphasis = 0
             elif events[loc] == 'settlement':
                 emphasis = curses.A_BOLD
@@ -102,8 +102,9 @@ def display(
     offspring.sort(reverse=True)
 
     stats['species'] = len(offspring)
-    stats['gini_species'] = gini(offspring)
-    stats['gini_stasis'] = gini(fitness)
+    # Convert to float for type compatibility
+    stats['gini_species'] = float(gini(offspring))
+    stats['gini_stasis'] = float(gini(fitness))
     
     # Get current terminal dimensions
     term_y, term_x = stdscr.getmaxyx()
@@ -121,14 +122,14 @@ def display(
     if alive_n > 0:
         alive_mean = alive_sum / alive_n
         stat_win.addstr(2, 0, f"Alive mean #(stasis): {alive_mean:.2f}")
-        stats['alive_mean_stasis'] = alive_mean
+        stats['alive_mean_stasis'] = float(alive_mean)
         
     from ..grid import num_locs
     empty_n = num_locs - alive_n
     if empty_n > 0:
         empty_mean = empty_sum / empty_n
         stat_win.addstr(3, 0, f"Empty mean #(stasis): {empty_mean:.2f}")
-        stats['empty_mean_stasis'] = empty_mean
+        stats['empty_mean_stasis'] = float(empty_mean)
         
     stat_win.addstr(5, 0, str(fitness)[0:term_x-1])
     stat_win.addstr(6, 0, str(offspring)[0:term_x-1])

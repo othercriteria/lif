@@ -1,15 +1,13 @@
 """Core simulation code for Lif"""
 
-from typing import Dict, List, Set, Tuple, Any, Optional
-import curses
 import csv
-import random
-import cProfile
+import curses
+from typing import Any, Dict, List, Optional
 
 from .config import params
-from .models import empty_init
 from .grid import all_locs, step
-from .utils.display import display
+from .models import empty_init
+from .utils.display import GridLocation, display
 
 # Will be set by cli.py
 args = None
@@ -23,7 +21,7 @@ def do_sim(
     """Run the simulation"""
     # Initialize grid, neighborhoods, and alive neighbor pointers
     grid = {}
-    live_nbrs = {}
+    live_nbrs: Dict[GridLocation, List[GridLocation]] = {}
     live_nbrs_num = {}
     for loc in all_locs():
         live_nbrs[loc] = []
@@ -33,14 +31,14 @@ def do_sim(
     generation = 0
     mode = 0
     disp_empty = True
-    events = {}
+    events: Dict[GridLocation, str] = {}
     while True:
         if args and hasattr(args, 'blind') and generation == args.blind:
             break
 
         if not args or (hasattr(args, 'blind') and not args.blind) and stdscr is not None:
             # Handle user input
-            c = stdscr.getch()
+            c: int = stdscr.getch() if stdscr is not None else -1
             if c == ord('q'):
                 return 'quit'
             elif c == ord(' '):
@@ -85,7 +83,7 @@ def do_sim(
                 statrow['exchanges_interspecific'] = exchanges_interspecific
                 outwriter.writerow(statrow)
 
-        grid_new = {}
+        grid_new: Dict[GridLocation, Any] = {}
         live_nbrs_new = {}
         live_nbrs_num_new = {}
         for loc in live_nbrs:

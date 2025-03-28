@@ -1,12 +1,11 @@
 """Cell models for Lif"""
 
-from typing import Dict, Set, Tuple, Optional, Any
 from itertools import product
-import random
+from typing import Dict, Optional
 
-from .stasis import stasis_all, set_to_stasis, s_set, StasisKey, StasisSet
-from .utils.math import iid_set
 from .config import params
+from .stasis import StasisKey, s_set, set_to_stasis, stasis_all
+from .utils.math import iid_set
 
 # Global parent counter
 parent_counter: int = 0

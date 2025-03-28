@@ -16,8 +16,7 @@
           buildInputs = with pkgs; [
             python3
             python3Packages.virtualenv
-            python3Packages.pip
-            python3Packages.setuptools
+            gnumake
           ];
 
           shellHook = ''
@@ -30,8 +29,9 @@
             # Activate the virtual environment
             source .venv/bin/activate
             
-            # Install the package in development mode
+            # Install the package and dev tools in development mode
             pip install -e .
+            pip install --quiet mypy ruff
             
             # Setup prompt
             export PS1="\n\[\033[1;32m\][lif:\[\033[1;34m\]\w\[\033[1;32m\]]\$\[\033[0m\] "

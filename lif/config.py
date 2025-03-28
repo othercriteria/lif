@@ -1,7 +1,7 @@
 """Configuration parameters for Lif"""
 
-from typing import Dict, Any, Optional
 import argparse
+from typing import Any, Dict
 
 # Model parameters
 params: Dict[str, Any] = {

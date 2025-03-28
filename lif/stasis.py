@@ -1,7 +1,7 @@
 """Stasis operations for Lif"""
 
-from typing import Dict, List, Set, Tuple, Any
 from itertools import product
+from typing import Dict, List, Set, Tuple
 
 # Type definitions
 StasisKey = Tuple[bool, ...]
@@ -53,10 +53,10 @@ stasis_all: StasisKey = tuple([True] * 9)
 
 def set_to_stasis(s: StasisSet) -> StasisKey:
     """Convert a set of indices to a stasis tuple"""
-    l = len(s)
-    if l == 9:
+    length = len(s)
+    if length == 9:
         return stasis_all
-    elif l == 0:
+    elif length == 0:
         return stasis_none
     else:
         arr = [False] * 9

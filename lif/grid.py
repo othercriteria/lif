@@ -1,14 +1,13 @@
 """Grid functions for Lif"""
 
-from typing import Dict, List, Set, Tuple, Generator, Iterator, Any
-from itertools import product
-from math import exp
 import random
+from math import exp
+from typing import Any, Dict, Iterator, List, Set, Tuple
 
 from .config import params
-from .models import Alive, Empty, empty_init, empty, mutate
-from .stasis import s_count, s_list, s_lose, s_lose_min, s_lose_max, s_set, set_to_stasis
-from .utils.math import weighted_choice, runif
+from .models import Alive, Empty, empty, empty_init, mutate
+from .stasis import s_count, s_list, s_lose, s_lose_max, s_lose_min, s_set, set_to_stasis
+from .utils.math import runif, weighted_choice
 
 # Type definitions
 GridLocation = Tuple[int, int]

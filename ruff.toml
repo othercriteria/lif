@@ -1,0 +1,12 @@
+target-version = "py38"
+line-length = 100
+
+[lint]
+select = ["E", "F", "B", "I"]
+ignore = ["E501"]  # Line too long
+
+[format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
