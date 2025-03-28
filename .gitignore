@@ -2,3 +2,6 @@
 .env
 *~
 build/
+.venv/
+.direnv/
+.envrc
