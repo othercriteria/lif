@@ -48,9 +48,16 @@ class Alive:
 
 def mutate(parent: Alive) -> Alive:
     """Create a mutated version of the parent cell"""
-    mut = iid_set(params['mut_p'])
-    if sum(mut) > 0:
-        new_stasis_mut = s_set[parent.stasis].symmetric_difference(mut)
-        return parent.child(set_to_stasis(new_stasis_mut))
-    else:
+    # Early exit if mutation rate is zero
+    mut_p = params['mut_p']
+    if mut_p <= 0:
         return parent
+    
+    # Generate mutation set
+    mut = iid_set(mut_p)
+    if not mut:  # Empty set check is faster than sum(mut) > 0
+        return parent
+    
+    # Apply mutation when needed
+    new_stasis_mut = s_set[parent.stasis].symmetric_difference(mut)
+    return parent.child(set_to_stasis(new_stasis_mut))

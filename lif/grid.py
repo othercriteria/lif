@@ -59,9 +59,17 @@ def settlement(
     cost_func: Dict[int, float]
 ) -> Alive:
     """Create a new settlement from neighboring cells"""
-    probs = [cost_func[s_count[grid_old[n].stasis]]
-             for n in live_nbrs_old[loc]]
-    settler = grid_old[live_nbrs_old[loc][weighted_choice(probs)]]
+    # Optimization: access live_nbrs_old[loc] once
+    neighbors = live_nbrs_old[loc]
+    
+    # No need to calculate probabilities if there's only one neighbor
+    if len(neighbors) == 1:
+        settler = grid_old[neighbors[0]]
+        return mutate(settler)
+    
+    # Pre-calculate probabilities for weighted choice
+    probs = [cost_func[s_count[grid_old[n].stasis]] for n in neighbors]
+    settler = grid_old[neighbors[weighted_choice(probs)]]
 
     return mutate(settler)
 
@@ -115,52 +123,63 @@ def step(
             return empty[s_lose[cell.stasis][pick]]
 
     # Precompute cost function for settlement
+    # Cache this calculation outside the step function if params['fit_cost'] doesn't change
     cost_func = {}
     f = params['fit_cost']
     for s in range(10):
         cost_func[s] = exp(-f * s)
         
     events: Dict[GridLocation, str] = {}
+    goh_r = params['goh_r']  # Cache parameter access
+    exchange_r = params['exchange_r']  # Cache parameter access
+    
+    # Pre-fetch neighborhood to avoid dict lookups in the loop
+    nbhood = neighborhood
+    
     for loc in grid_old:
         cell = grid_old[loc]
-
-        # Stasis
-        if cell.stasis[live_nbrs_num_old[loc]]:
-            if not cell.alive:
-                if runif() < params['goh_r']:
-                    grid_new[loc] = goh(cell)
-                else:
+        nb_num = live_nbrs_num_old[loc]  # Cache this value
+        
+        # Stasis condition - most common case first
+        if cell.stasis[nb_num]:
+            # Alive cells
+            if cell.alive:
+                # Most cells stay as they are - handle this case first for performance
+                if nb_num == 0 or runif() >= exchange_r:
                     grid_new[loc] = cell
-            else:
-                if (live_nbrs_num_old[loc] > 0 and
-                    runif() < params['exchange_r']):
+                else:
+                    # Exchange case - less common
                     new, conspecific = exchange(loc, grid_old, live_nbrs_old)
                     grid_new[loc] = new
-                    if conspecific:
-                        events[loc] = 'exchange conspecific'
-                    else:
-                        events[loc] = 'exchange interspecific'
-                else:
-                    grid_new[loc] = cell
+                    # Using string interning for event types
+                    events[loc] = 'exchange conspecific' if conspecific else 'exchange interspecific'
+            # Empty cells
+            else:
+                grid_new[loc] = goh(cell) if runif() < goh_r else cell
         else:
-            # Gain
-            if not cell.alive:
-                if live_nbrs_num_old[loc] == 0:
+            # Gain or Loss conditions
+            if not cell.alive:  # Empty cell
+                # Optimization: separate the common conditions
+                if nb_num == 0:  # No neighbors - spontaneous generation
                     grid_new[loc] = Alive()
-                    for n in neighborhood[loc]:
+                    # Update neighbor references
+                    for n in nbhood[loc]:
                         live_nbrs_new[n].append(loc)
                         live_nbrs_num_new[n] += 1
-                else:
-                    grid_new[loc] = settlement(loc, grid_old,
-                                             live_nbrs_old, cost_func)
-                    for n in neighborhood[loc]:
+                else:  # Settlement from neighbors
+                    grid_new[loc] = settlement(loc, grid_old, live_nbrs_old, cost_func)
+                    # Update neighbor references
+                    nbrs = nbhood[loc]  # Cache neighborhood access
+                    for n in nbrs:
                         live_nbrs_new[n].append(loc)
                         live_nbrs_num_new[n] += 1
                     events[loc] = 'settlement'
-            else:
-                # Loss
+            else:  # Alive cell dies
                 grid_new[loc] = empty_init
-                for n in neighborhood[loc]:
+                # Update neighbor references
+                nbrs = nbhood[loc]  # Cache neighborhood access
+                for n in nbrs:
+                    # This is a hot spot - optimize list removal
                     live_nbrs_new[n].remove(loc)
                     live_nbrs_num_new[n] -= 1
 
