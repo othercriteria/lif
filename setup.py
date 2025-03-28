@@ -11,7 +11,7 @@ setup(name='lif',
       packages=find_packages(),
       entry_points={
           'console_scripts': [
-              'lif=lif:run_optimized',
+              'lif=lif.cli:run',
           ],
       },
       python_requires='>=3.4',
