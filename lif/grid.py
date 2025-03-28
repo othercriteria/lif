@@ -162,12 +162,19 @@ def step(
             pick = random.choice(s_list[cell.stasis])
             return empty[s_lose[cell.stasis][pick]]
 
-    # Precompute cost function for settlement
-    # Cache this calculation outside the step function if params['fit_cost'] doesn't change
-    cost_func = {}
+    # Memoize cost function calculation based on fit_cost parameter
+    if not hasattr(step, 'cost_func_cache'):
+        step.cost_func_cache = {}
+        
+    # Use cached cost function if available
     f = params['fit_cost']
-    for s in range(10):
-        cost_func[s] = exp(-f * s)
+    if f not in step.cost_func_cache:
+        cost_func = {}
+        for s in range(10):
+            cost_func[s] = exp(-f * s)
+        step.cost_func_cache[f] = cost_func
+    else:
+        cost_func = step.cost_func_cache[f]
         
     events: Dict[GridLocation, str] = {}
     goh_r = params['goh_r']  # Cache parameter access

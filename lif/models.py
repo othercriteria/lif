@@ -59,5 +59,6 @@ def mutate(parent: Alive) -> Alive:
         return parent
     
     # Apply mutation when needed
-    new_stasis_mut = s_set[parent.stasis].symmetric_difference(mut)
+    parent_stasis_set = s_set[parent.stasis]  # Cache this lookup
+    new_stasis_mut = parent_stasis_set.symmetric_difference(mut)
     return parent.child(set_to_stasis(new_stasis_mut))
